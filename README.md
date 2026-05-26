@@ -31,9 +31,15 @@ pip install -r requirements.txt
 
 ## 사용법
 
+입력은 **로컬 파일 경로** 또는 **YouTube URL** 둘 다 됩니다. URL이면 yt-dlp로
+자동 다운로드(360p, ffmpeg 불필요)한 뒤 분석하며, 같은 영상은 `downloads/`에 캐시됩니다.
+
 ```powershell
 # 기본 분석 (리포트만)
 python main.py trick.mp4 --mode card
+
+# YouTube URL 직접 분석
+python main.py "https://youtu.be/VIDEO_ID" --mode coin --llm
 
 # 손 관절+의심구간이 표시된 영상과 의심 프레임 이미지까지 저장
 python main.py trick.mp4 --mode coin --annotate --save-frames 5

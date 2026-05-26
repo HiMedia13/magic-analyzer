@@ -14,10 +14,11 @@ venv/
 models/
 *.task
 
-# 분석 결과물 / 테스트 샘플
+# 분석 결과물 / 테스트 샘플 / 다운로드 캐시
 out/
 out*/
 samples/
+downloads/
 sample_smoke.mp4
 *.jpg
 *.jpeg

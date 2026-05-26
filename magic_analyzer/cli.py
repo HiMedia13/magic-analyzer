@@ -9,6 +9,7 @@ from pathlib import Path
 import cv2
 
 from .detect import detect
+from .fetch import resolve_video_input
 from .hands import HandTracker
 from .report import draw_overlay, format_report, to_dict, write_json
 from .video import iter_frames, make_writer, open_video
@@ -19,7 +20,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="magic-analyzer",
         description="카드/동전 마술 영상에서 '수상한 순간'을 찾아주는 분석 도구",
     )
-    p.add_argument("video", help="분석할 영상 파일 경로 (mp4/mov 등)")
+    p.add_argument("video", help="분석할 영상 파일 경로 또는 YouTube URL")
     p.add_argument("--mode", choices=["card", "coin"], default="card",
                    help="마술 종류 (기본: card)")
     p.add_argument("--out", default="out", help="결과 출력 폴더 (기본: out)")
@@ -70,7 +71,11 @@ def main(argv: list[str] | None = None) -> int:
     _force_utf8()
     _load_env()
     args = _build_parser().parse_args(argv)
-    video_path = Path(args.video)
+    try:
+        video_path = resolve_video_input(args.video)
+    except Exception as e:
+        print(f"[오류] 입력 처리 실패: {e}", file=sys.stderr)
+        return 1
     if not video_path.exists():
         print(f"[오류] 파일이 없습니다: {video_path}", file=sys.stderr)
         return 1
