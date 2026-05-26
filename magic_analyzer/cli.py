@@ -7,6 +7,12 @@ import os
 import sys
 from pathlib import Path
 
+# MediaPipe/TF 로그 노이즈(XNNPACK/clearcut 텔레메트리 등) 억제.
+# 반드시 hands(=mediapipe) 임포트 '전에' 설정해야 효과가 있다.
+os.environ.setdefault("GLOG_minloglevel", "3")
+os.environ.setdefault("GLOG_logtostderr", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+
 import cv2
 
 from .detect import detect
@@ -75,7 +81,8 @@ def _force_utf8() -> None:
     """Windows 콘솔(cp949)에서 한글/이모지 출력이 깨지거나 죽지 않도록 utf-8로 전환."""
     for stream in (sys.stdout, sys.stderr):
         try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            # line_buffering=True → 줄마다 즉시 flush (로그 파일이 실시간으로 갱신됨)
+            stream.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
         except Exception:
             pass
 
@@ -99,10 +106,15 @@ def main(argv: list[str] | None = None) -> int:
     # --- 1단계: 손 추적 ---
     print(f"[1/3] 손 추적 중... ({video_path.name}, mode={args.mode})")
     cap, meta = open_video(video_path)
+    total = meta.frame_count or 0
+    if total:
+        print(f"      길이 {meta.duration_sec:.0f}s, 약 {total}프레임 — 진행률 표시")
     frames = []
     with HandTracker() as tracker:
         for fr in iter_frames(cap, meta.fps, stride=args.stride):
             frames.append(tracker.process(fr.index, fr.time_sec, fr.image))
+            if total and fr.index and fr.index % 600 == 0:
+                print(f"      ...추적 {fr.index}/{total} ({100 * fr.index / total:.0f}%)")
     cap.release()
     print(f"      처리 프레임: {len(frames)}장, fps={meta.fps:.1f}, "
           f"길이={meta.duration_sec:.1f}s")
@@ -136,6 +148,9 @@ def main(argv: list[str] | None = None) -> int:
                            if s.start_sec <= fr.time_sec <= s.end_sec), None)
             if writer is not None:
                 writer.write(draw_overlay(fr.image, obs, active))
+                if total and fr.index and fr.index % 600 == 0:
+                    print(f"      ...영상 인코딩 {fr.index}/{total} "
+                          f"({100 * fr.index / total:.0f}%)")
             # 정점 프레임 저장
             if args.save_frames > 0:
                 key = round(fr.time_sec, 2)
