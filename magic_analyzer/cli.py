@@ -46,6 +46,17 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _load_env() -> None:
+    """프로젝트 루트와 현재 디렉토리의 .env를 환경변수로 로드(OPENAI_API_KEY 등)."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    for cand in (Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env"):
+        if cand.exists():
+            load_dotenv(cand)
+
+
 def _force_utf8() -> None:
     """Windows 콘솔(cp949)에서 한글/이모지 출력이 깨지거나 죽지 않도록 utf-8로 전환."""
     for stream in (sys.stdout, sys.stderr):
@@ -57,6 +68,7 @@ def _force_utf8() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     _force_utf8()
+    _load_env()
     args = _build_parser().parse_args(argv)
     video_path = Path(args.video)
     if not video_path.exists():

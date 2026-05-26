@@ -88,8 +88,15 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 (`gpt-4o`)에 보내 "여기서 어떤 기법이 일어났을 법한지"를 한국어로 추론합니다.
 한 장이 아니라 3프레임을 보내 슬레이트의 *움직임 흐름*을 보여주는 게 핵심입니다.
 
+키는 환경변수 `OPENAI_API_KEY`로 주거나, 프로젝트 루트에 `.env` 파일로 넣으면
+자동 로드됩니다(`.env.example` 참고). **변수명은 정확히 `OPENAI_API_KEY`** 여야 합니다.
+
 ```powershell
-$env:OPENAI_API_KEY = "sk-..."     # 키 설정 (필수)
+# 방법 A) .env 파일 (권장) — 프로젝트 루트에 생성
+#   OPENAI_API_KEY=sk-...
+# 방법 B) 환경변수로 직접
+$env:OPENAI_API_KEY = "sk-..."
+
 python main.py samples/coin_cu.mp4 --mode coin --llm --llm-top 5
 ```
 
