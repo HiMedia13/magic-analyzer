@@ -74,6 +74,13 @@ def main() -> int:
 
     frames, fps = load_frames(Path(args.video))
 
+    # 손 검출률 (해상도 효과 비교용)
+    n = len(frames)
+    n1 = sum(1 for f in frames if len(f.hands) >= 1)
+    n2 = sum(1 for f in frames if len(f.hands) >= 2)
+    print(f"\n손 검출률: ≥1손 {n1}/{n} ({100*n1/n:.1f}%), "
+          f"≥2손 {n2}/{n} ({100*n2/n:.1f}%)")
+
     _, smooth, _ = score_timeline(
         frames, fps, args.mode,
         fast_thresh=args.fast_thresh, grab_drop=args.grab_drop,
