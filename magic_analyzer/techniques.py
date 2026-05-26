@@ -234,6 +234,96 @@ TECHNIQUES: dict[str, dict] = {
         "cues": "뚜렷한 슬레이트 없이 효과 발생, 특정 각도만 보여줌",
         "query": "magic gimmick coin card explained",
     },
+    "cull": {
+        "ko": "컬(스프레드 컬)", "en": "Cull",
+        "aliases": ["cull", "컬", "spread cull", "스프레드 컬", "hofzinser cull"],
+        "type": "card",
+        "desc": ("카드를 펼치거나 넘기는 동안 특정 카드(들)를 비밀리에 골라 덱 아래나 원하는 "
+                 "위치로 모은다. 관객에게 보여주는 척하면서 목표 카드를 컨트롤한다."),
+        "cues": "카드를 스프레드/넘기는 중 손가락이 특정 카드를 아래로 끌어모음",
+        "query": "spread cull card control tutorial",
+    },
+    "false_cut": {
+        "ko": "가짜 컷", "en": "False Cut",
+        "aliases": ["false cut", "가짜 컷", "거짓 컷", "zarrow", "charlier cut", "swing cut false"],
+        "type": "card",
+        "desc": ("덱을 자르는 것처럼 보이지만 전체(또는 핵심 카드) 순서를 그대로 유지한다. "
+                 "셋업을 지키면서 섞은 듯한 인상을 준다. 자로우/차알리어 등 변형이 많다."),
+        "cues": "여러 번 자르는 듯 보여도 결정적 순서가 보존됨",
+        "query": "false cut card tutorial",
+    },
+    "pinky_break": {
+        "ko": "핑키 브레이크", "en": "Pinky Break",
+        "aliases": ["pinky break", "핑키 브레이크", "브레이크", "break", "pinky count"],
+        "type": "card",
+        "desc": ("새끼손가락으로 덱 사이에 미세한 틈(브레이크)을 잡아 특정 카드의 위치를 비밀리에 "
+                 "표시·유지한다. 더블리프트·패스·컨트롤의 사전 동작(겟 레디)으로 널리 쓰인다."),
+        "cues": "덱을 쥔 새끼손가락이 살짝 안쪽으로, 카드 사이 미세 틈 유지",
+        "query": "pinky break get ready card tutorial",
+    },
+    "bottom_deal": {
+        "ko": "바텀 딜", "en": "Bottom Deal",
+        "aliases": ["bottom deal", "바텀 딜", "바텀딜", "bottom dealing"],
+        "type": "card",
+        "desc": ("맨 위 카드를 딜하는 척하면서 실제로는 덱 맨 아래 카드를 딜한다. 도박/마술의 "
+                 "고난도 기술로, 맨 위 카드를 보존하거나 원하는 카드를 분배할 때 쓴다."),
+        "cues": "딜하는 순간 덱 아래쪽에서 카드가 빠져나옴, 그립 변화",
+        "query": "bottom deal card tutorial slow motion",
+    },
+    "side_steal": {
+        "ko": "사이드 스틸", "en": "Side Steal",
+        "aliases": ["side steal", "사이드 스틸", "사이드스틸"],
+        "type": "card",
+        "desc": ("덱 중간에 있는 카드를 옆으로 비밀리에 빼내 팜하거나 맨 위로 옮기는 컨트롤. "
+                 "관객이 끼운 카드를 몰래 가져오는 데 쓴다."),
+        "cues": "덱을 쥔 손에서 카드 한 장이 옆으로 빠져 손바닥으로",
+        "query": "side steal card sleight tutorial",
+    },
+    "downs_palm": {
+        "ko": "다운스 팜", "en": "Downs Palm",
+        "aliases": ["downs palm", "다운스 팜", "다운스팜", "t nelson downs palm"],
+        "type": "coin",
+        "desc": ("T. Nelson Downs가 정립한 동전 팜 — 엄지 밑동(웹)과 손바닥 근육으로 동전을 "
+                 "물어, 손가락을 펴 보여도 동전이 가려진다. 동전 프로덕션·베니시의 고전."),
+        "cues": "손을 펴 보여도 엄지 밑동에 동전 은닉, 손등 회전 회피",
+        "query": "downs palm coin tutorial",
+    },
+    "back_palm": {
+        "ko": "백 팜", "en": "Back Palm",
+        "aliases": ["back palm", "백 팜", "백팜", "back palming"],
+        "type": "coin/card 겸용",
+        "desc": ("동전/카드를 손등 쪽으로 숨겨, 손바닥을 펴서 정면으로 보여줘도 비어 보이게 한다. "
+                 "매니퓰레이션(카드/동전 프로덕션)의 핵심 — 손을 뒤집으며 앞뒤로 숨긴다."),
+        "cues": "손바닥을 보여줄 때 물체가 손등 뒤로, 손 뒤집기 동작",
+        "query": "back palm coin card manipulation tutorial",
+    },
+    "edge_grip": {
+        "ko": "엣지 그립(텐카이)", "en": "Edge Grip",
+        "aliases": ["edge grip", "엣지 그립", "tenkai", "텐카이", "tenkai palm"],
+        "type": "coin",
+        "desc": ("엄지 밑동으로 동전의 '가장자리'를 물어 쥐어, 손가락을 펴거나 손을 기울여도 "
+                 "동전이 가려진다(텐카이 팜). 손이 비어 보이는 베니시에 쓴다."),
+        "cues": "동전이 엄지 안쪽 가장자리에 세워져 은닉, 손바닥 정면 회피",
+        "query": "tenkai palm edge grip coin tutorial",
+    },
+    "sleeving": {
+        "ko": "슬리빙", "en": "Sleeving",
+        "aliases": ["sleeving", "슬리빙", "슬리브", "sleeve"],
+        "type": "coin/card 겸용",
+        "desc": ("물체를 소매 안으로 몰래 떨어뜨려/밀어넣어 사라지게 한다('소매 속으로'). "
+                 "손은 깨끗해 보이고 물체가 순간 사라진 듯하다."),
+        "cues": "손이 소매 근처를 스치는 순간 물체 사라짐(VANISH)",
+        "query": "sleeving magic coin technique tutorial",
+    },
+    "topit": {
+        "ko": "토핏", "en": "Topit",
+        "aliases": ["topit", "토핏", "탑잇"],
+        "type": "coin/card 겸용",
+        "desc": ("재킷 안쪽에 단 비밀 주머니(토핏)에 물체를 떨어뜨려 사라지게 하는 도구+기법. "
+                 "손을 몸 쪽으로 가져가는 자연스러운 동작에 물체를 흘려 넣는다."),
+        "cues": "쥔 손이 가슴/재킷 앞으로 가는 순간 물체 사라짐",
+        "query": "topit magic vanish tutorial",
+    },
 }
 
 
