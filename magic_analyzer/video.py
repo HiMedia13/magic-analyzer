@@ -56,5 +56,8 @@ def iter_frames(cap: cv2.VideoCapture, fps: float, stride: int = 1) -> Iterator[
 
 
 def make_writer(path: str | Path, meta: VideoMeta) -> cv2.VideoWriter:
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    # .webm은 VP8(브라우저 재생 가능), 그 외는 mp4v. 이 OpenCV 빌드는 H.264 인코더가
+    # 없어 avc1가 안 되므로, 웹 표시는 webm을 쓴다.
+    tag = "VP80" if Path(path).suffix.lower() == ".webm" else "mp4v"
+    fourcc = cv2.VideoWriter_fourcc(*tag)
     return cv2.VideoWriter(str(path), fourcc, meta.fps, (meta.width, meta.height))

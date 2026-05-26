@@ -114,7 +114,7 @@ def status(job_id):
         "report": report,
         "summary": (llm or {}).get("summary"),  # 에이전트 전체 트릭 추정
         "frames": frames,
-        "video": (job_dir / "annotated.mp4").exists(),
+        "video": (job_dir / "annotated.webm").exists(),
         "log": log_tail,
     })
 

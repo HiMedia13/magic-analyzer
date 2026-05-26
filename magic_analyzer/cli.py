@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         obs_by_index = {f.index: f for f in frames}
         peaks = {round(s.peak_sec, 2): s for s in segments[:max(args.save_frames, 0)]}
         cap, meta = open_video(video_path)
-        writer = make_writer(out_dir / "annotated.mp4", meta) if args.annotate else None
+        writer = make_writer(out_dir / "annotated.webm", meta) if args.annotate else None
         saved = 0
         for fr in iter_frames(cap, meta.fps, stride=1):
             obs = obs_by_index.get(fr.index)
@@ -162,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
             writer.release()
         cap.release()
         if args.annotate:
-            print(f"      → {out_dir / 'annotated.mp4'}")
+            print(f"      → {out_dir / 'annotated.webm'}")
         if saved:
             print(f"      → 의심 프레임 {saved}장 저장")
     else:
