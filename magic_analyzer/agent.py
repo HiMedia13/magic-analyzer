@@ -61,8 +61,18 @@ class SegTask(TypedDict):
     segment: dict
 
 
-def _data_url(image_bgr) -> str:
-    ok, buf = cv2.imencode(".jpg", image_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
+def _data_url(image_bgr, max_edge: int = 512, quality: int = 75) -> str:
+    """프레임을 작게 리사이즈+JPEG 인코딩해 data URL로. (비전 비용·트레이스 크기 절감)
+
+    이미지 바이트가 LangGraph 상태/트레이스에 들어가므로 너무 크면 LangSmith 20MB
+    ingest 한도를 넘는다. 손 위치 판단에는 512px면 충분하다.
+    """
+    h, w = image_bgr.shape[:2]
+    scale = max_edge / max(h, w)
+    if scale < 1.0:
+        image_bgr = cv2.resize(image_bgr, (int(w * scale), int(h * scale)),
+                               interpolation=cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".jpg", image_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
     if not ok:
         raise RuntimeError("프레임 인코딩 실패")
     return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
@@ -76,12 +86,12 @@ def _signals_text(top_signals: list[str]) -> str:
 # ---------- 노드 ----------
 def _analyze_one(task: SegTask) -> dict:
     seg = task["segment"]
-    images = seg.get("images") or []
-    if not images:
+    urls = seg.get("image_urls") or []
+    if not urls:
         return {"analyses": [{**_meta(seg, task["index"]),
                               "hypothesis": "(프레임 없음 — 추론 불가)"}]}
 
-    labels = ["직전", "정점", "직후"][:len(images)]
+    labels = ["직전", "정점", "직후"][:len(urls)]
     text = (
         f"종류: {MODE_KO.get(task['mode'], task['mode'])}\n"
         f"의심 시각: {seg['peak_sec']:.1f}초 부근\n"
@@ -89,8 +99,8 @@ def _analyze_one(task: SegTask) -> dict:
         f"프레임 순서: {'/'.join(labels)}. 여기서 무슨 일이 일어났을지 추론하세요."
     )
     content = [{"type": "text", "text": text}]
-    for img in images:
-        content.append({"type": "image_url", "image_url": {"url": _data_url(img)}})
+    for url in urls:
+        content.append({"type": "image_url", "image_url": {"url": url}})
 
     llm = ChatOpenAI(model=task["model"], max_tokens=400)
     resp = llm.invoke([SystemMessage(content=ANALYZE_SYSTEM),
@@ -145,7 +155,20 @@ def _maybe_enable_tracing() -> None:
         os.environ.setdefault("LANGSMITH_PROJECT", "magic-analyzer")
 
 
-@traceable(name="magic-trick-agent", run_type="chain")
+def _redact_inputs(inputs: dict) -> dict:
+    """트레이스에 기록할 입력에서 raw 이미지 픽셀을 제거(프레임 수만 남김).
+
+    @traceable은 함수 인자를 그대로 직렬화하는데, segments의 numpy 프레임을 그대로
+    두면 트레이스가 수십 MB로 불어 LangSmith ingest 한도(20MB)를 넘는다.
+    """
+    segs = inputs.get("segments") or []
+    red = [{"peak_sec": s.get("peak_sec"), "score": s.get("score"),
+            "top_signals": s.get("top_signals"),
+            "n_frames": len(s.get("images") or [])} for s in segs]
+    return {**{k: v for k, v in inputs.items() if k != "segments"}, "segments": red}
+
+
+@traceable(name="magic-trick-agent", run_type="chain", process_inputs=_redact_inputs)
 def analyze(segments: list[dict], mode: str = "card",
             model: str = "gpt-4o") -> dict:
     """의심 구간 리스트(각각 peak_sec/score/top_signals/images[BGR])를 받아
@@ -153,8 +176,18 @@ def analyze(segments: list[dict], mode: str = "card",
     _maybe_enable_tracing()
     if not segments:
         return {"analyses": [], "summary": "분석할 구간이 없습니다."}
+    # 프레임(BGR)을 미리 작은 data URL 문자열로 인코딩해 상태에 넣는다.
+    # (raw 픽셀을 상태에 두면 트레이스가 LangSmith 한도를 초과한다)
+    enc = []
+    for seg in segments:
+        enc.append({
+            "peak_sec": seg["peak_sec"],
+            "score": seg.get("score", 0.0),
+            "top_signals": seg.get("top_signals", []),
+            "image_urls": [_data_url(im) for im in (seg.get("images") or [])],
+        })
     result = GRAPH.invoke({
-        "mode": mode, "model": model, "segments": segments,
+        "mode": mode, "model": model, "segments": enc,
         "analyses": [], "summary": "",
     })
     analyses = sorted(result.get("analyses", []), key=lambda a: -a.get("score", 0))
