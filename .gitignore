@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 모델 바이너리 (실행 시 자동 다운로드)
+models/
+*.task
+
+# 분석 결과물
+out/
+out_smoke/
+sample_smoke.mp4
+*.mp4
+*.mov
+*.avi
+!sample/*.mp4
+
+# OS
+.DS_Store
+Thumbs.db
