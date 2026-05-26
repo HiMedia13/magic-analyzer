@@ -1,3 +1,4 @@
 opencv-python>=4.9
 mediapipe>=0.10.14
 numpy>=1.26,<2.0
+openai>=1.40          # --llm 옵션(OpenAI 비전 추론)에만 필요

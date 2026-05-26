@@ -37,6 +37,12 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="봉우리 앞뒤로 구간에 포함할 시간(초)")
     p.add_argument("--max-results", type=int, default=None,
                    help="최대 의심 순간 개수 (기본: 제한 없음)")
+    p.add_argument("--llm", action="store_true",
+                   help="의심 구간을 OpenAI 비전 모델로 추론 (OPENAI_API_KEY 환경변수 필요)")
+    p.add_argument("--llm-model", default="gpt-4o",
+                   help="OpenAI 비전 모델명 (기본 gpt-4o)")
+    p.add_argument("--llm-top", type=int, default=5,
+                   help="LLM으로 추론할 상위 구간 개수 (기본 5)")
     return p
 
 
@@ -84,8 +90,20 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "report.txt").write_text(report_txt, encoding="utf-8")
     write_json(out_dir / "report.json", to_dict(segments, meta, args.mode))
 
-    # --- 3단계: 영상/프레임 출력 (필요 시 영상 2차 패스) ---
-    need_second_pass = args.annotate or args.save_frames > 0
+    # --- 3단계: 영상/프레임 출력 + (옵션) LLM용 프레임 수집 (영상 2차 패스) ---
+    llm_segs = segments[:max(args.llm_top, 0)] if args.llm else []
+    # LLM용: 각 구간의 직전/정점/직후 프레임 인덱스를 미리 계산
+    off = max(1, int(0.4 * meta.fps))
+    triplet_targets: dict[int, list[tuple[int, str]]] = {}
+    triplet_store: dict[int, dict[str, "cv2.typing.MatLike"]] = {}
+    for pos, s in enumerate(llm_segs):
+        peak_idx = int(round(s.peak_sec * meta.fps))
+        triplet_store[pos] = {}
+        for slot, idx in (("before", peak_idx - off), ("peak", peak_idx),
+                          ("after", peak_idx + off)):
+            triplet_targets.setdefault(max(0, idx), []).append((pos, slot))
+
+    need_second_pass = args.annotate or args.save_frames > 0 or bool(llm_segs)
     if need_second_pass and segments:
         print("[3/3] 마킹 영상/프레임 저장 중...")
         obs_by_index = {f.index: f for f in frames}
@@ -107,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
                     fn = out_dir / f"suspect_{saved + 1:02d}_{key:.2f}s.jpg"
                     cv2.imwrite(str(fn), draw_overlay(fr.image, obs, s))
                     saved += 1
+            # LLM용 프레임 수집(오버레이 없는 원본)
+            for pos, slot in triplet_targets.get(fr.index, ()):
+                triplet_store[pos][slot] = fr.image.copy()
         if writer is not None:
             writer.release()
         cap.release()
@@ -117,8 +138,46 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("[3/3] (저장할 영상/프레임 없음)")
 
+    # --- 4단계: LLM 추론 (옵션) ---
+    if llm_segs:
+        _run_llm(llm_segs, triplet_store, args, out_dir)
+
     print(f"\n완료. 결과 폴더: {out_dir.resolve()}")
     return 0
+
+
+def _run_llm(llm_segs, triplet_store, args, out_dir: Path) -> None:
+    """수집한 프레임을 OpenAI 비전 모델에 넘겨 구간별로 추론하고 결과를 저장."""
+    from .llm import FrameTriplet, LLMInferencer
+
+    print(f"[4/4] OpenAI({args.llm_model}) 추론 중... (상위 {len(llm_segs)}개 구간)")
+    try:
+        infer = LLMInferencer(model=args.llm_model)
+    except Exception as e:  # 키 미설정/패키지 문제 등
+        print(f"      [오류] OpenAI 초기화 실패: {e}", file=sys.stderr)
+        print("      OPENAI_API_KEY 환경변수를 설정했는지 확인하세요.", file=sys.stderr)
+        return
+
+    lines = ["", "=" * 64, " LLM 추론 (OpenAI " + args.llm_model + ")", "=" * 64, ""]
+    results = []
+    for pos, seg in enumerate(llm_segs):
+        store = triplet_store.get(pos, {})
+        triplet = FrameTriplet(before=store.get("before"),
+                               peak=store.get("peak"), after=store.get("after"))
+        try:
+            text = infer.infer(seg, triplet, args.mode)
+        except Exception as e:
+            text = f"(추론 실패: {e})"
+        m, s = divmod(seg.peak_sec, 60)
+        header = f"[{pos + 1}] {int(m):02d}:{s:05.2f} (점수 {seg.score:.2f})"
+        print(f"      {header}\n        {text}")
+        lines += [header, f"  {text}", ""]
+        results.append({"rank": pos + 1, "peak_sec": round(seg.peak_sec, 2),
+                        "inference": text})
+
+    (out_dir / "llm.txt").write_text("\n".join(lines), encoding="utf-8")
+    write_json(out_dir / "llm.json", {"model": args.llm_model, "results": results})
+    print(f"      → {out_dir / 'llm.txt'}")
 
 
 if __name__ == "__main__":

@@ -54,6 +54,9 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 | `--min-gap S` | 의심 순간 사이 최소 간격 초 (기본 1.2) |
 | `--window S` | 봉우리 앞뒤로 구간에 포함할 초 (기본 0.8) |
 | `--max-results N` | 최대 의심 순간 개수 (기본: 제한 없음) |
+| `--llm` | 상위 의심 구간을 **OpenAI 비전 모델로 추론** (`OPENAI_API_KEY` 필요) |
+| `--llm-model M` | OpenAI 비전 모델명 (기본 `gpt-4o`) |
+| `--llm-top K` | LLM으로 추론할 상위 구간 개수 (기본 5) |
 
 ## 좋은 결과를 위한 팁 (실측 기반)
 - **클로즈업 + 단독 출연** 영상에서 가장 잘 작동한다. 손이 화면을 충분히 채워야
@@ -69,6 +72,7 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 - `report.json` — 구간/점수/신호 상세 (다른 도구·LLM에 넘기기 좋음)
 - `annotated.mp4` — (옵션) 관절·의심구간 표시 영상
 - `suspect_NN_*.jpg` — (옵션) 의심 구간 정점 프레임
+- `llm.txt` / `llm.json` — (옵션 `--llm`) 구간별 OpenAI 비전 추론 결과
 
 ## 동작 원리
 1. **손 추적** — MediaPipe Tasks(HandLandmarker, VIDEO 모드)로 프레임마다 손 21개 관절을
@@ -79,6 +83,22 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
    집어 `봉우리 ±window` 창으로 보고. 클로즈업은 신호가 상시 켜지므로 '임계 초과 구간'을
    잡으면 수십 초 덩어리가 된다 — 봉우리만 집어 또렷한 순간을 준다.
 
+## LLM 추론 (OpenAI, 옵션)
+`--llm`을 켜면 상위 의심 구간마다 **직전→정점→직후 3프레임**을 OpenAI 비전 모델
+(`gpt-4o`)에 보내 "여기서 어떤 기법이 일어났을 법한지"를 한국어로 추론합니다.
+한 장이 아니라 3프레임을 보내 슬레이트의 *움직임 흐름*을 보여주는 게 핵심입니다.
+
+```powershell
+$env:OPENAI_API_KEY = "sk-..."     # 키 설정 (필수)
+python main.py samples/coin_cu.mp4 --mode coin --llm --llm-top 5
+```
+
+결과는 콘솔 + `out/llm.txt` + `out/llm.json`에 저장됩니다. 키가 없으면 분석은
+정상 진행되고 LLM 단계만 건너뜁니다(친절한 안내 출력). 비밀을 단정하지 않고
+"가능성"으로 제시하도록 프롬프트가 설계돼 있습니다.
+
+> 참고: 이 기능은 Anthropic이 아니라 **OpenAI SDK**(`openai`)를 사용합니다.
+
 ## 개발용 튜닝
 `scripts/tune.py` 는 손 추적 결과를 pickle로 캐시한 뒤 detect 파라미터만 바꿔가며
 빠르게 비교한다(영상당 추적 1회). 점수 분포(`--hist`)도 출력한다.
@@ -88,7 +108,7 @@ python scripts/tune.py samples/coin.mp4 --mode coin --score-thresh 1.0 --hist
 
 ## 로드맵
 - [ ] 동전/카드 객체 자체 추적(사라짐 직접 감지)
-- [ ] 의심 프레임을 멀티모달 LLM에 넘겨 "무슨 일이 일어났는지" 추론
+- [x] 의심 프레임을 멀티모달 LLM(OpenAI)에 넘겨 "무슨 일이 일어났는지" 추론
 - [ ] 간단한 웹 UI
 
 ## 면책
