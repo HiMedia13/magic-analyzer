@@ -141,6 +141,7 @@ def _maybe_enable_tracing() -> None:
     """LANGSMITH_API_KEY가 있으면 추적을 켜고 프로젝트 기본값을 설정."""
     if os.getenv("LANGSMITH_API_KEY") or os.getenv("LANGCHAIN_API_KEY"):
         os.environ.setdefault("LANGSMITH_TRACING", "true")
+        os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
         os.environ.setdefault("LANGSMITH_PROJECT", "magic-analyzer")
 
 

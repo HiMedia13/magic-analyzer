@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -48,14 +49,26 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load_env() -> None:
-    """프로젝트 루트와 현재 디렉토리의 .env를 환경변수로 로드(OPENAI_API_KEY 등)."""
+    """프로젝트 루트와 현재 디렉토리의 .env를 환경변수로 로드(OPENAI_API_KEY 등).
+
+    LangSmith 추적은 langchain이 임포트/실행되기 '전에' 켜야 하므로, 키가 있으면
+    여기서(가장 이른 시점) 추적 환경변수를 설정한다.
+    """
     try:
         from dotenv import load_dotenv
     except ImportError:
-        return
-    for cand in (Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env"):
-        if cand.exists():
-            load_dotenv(cand)
+        pass
+    else:
+        for cand in (Path(__file__).resolve().parent.parent / ".env",
+                     Path.cwd() / ".env"):
+            if cand.exists():
+                load_dotenv(cand)
+
+    if os.getenv("LANGSMITH_API_KEY") or os.getenv("LANGCHAIN_API_KEY"):
+        # 양쪽 이름 모두 세팅(버전별 차이 대응)
+        os.environ.setdefault("LANGSMITH_TRACING", "true")
+        os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+        os.environ.setdefault("LANGSMITH_PROJECT", "magic-analyzer")
 
 
 def _force_utf8() -> None:
