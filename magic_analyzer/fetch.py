@@ -37,6 +37,23 @@ def download_video(url: str) -> Path:
         "noprogress": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
+        # 1) 메타데이터만 먼저 조회해 영상 id를 얻는다.
+        meta = ydl.extract_info(url, download=False)
+        vid = meta.get("id")
+        # 2) 이미 받아둔 완성 파일이 있으면 재다운로드 없이 그대로 사용
+        #    (멀티모드에서 같은 URL을 두 번 받으며 .part 이름변경 충돌 나는 것 방지)
+        if vid:
+            for ext in ("mp4", "webm", "mkv", "m4a"):
+                cand = DOWNLOAD_DIR / f"{vid}.{ext}"
+                if cand.exists() and cand.stat().st_size > 0:
+                    return cand
+            # 끊겨 남은 .part 잔여물 정리(이름변경 충돌 예방)
+            for stale in DOWNLOAD_DIR.glob(f"{vid}.*.part"):
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
+        # 3) 실제 다운로드
         info = ydl.extract_info(url, download=True)
         reqs = info.get("requested_downloads") or []
         if reqs and reqs[0].get("filepath"):
