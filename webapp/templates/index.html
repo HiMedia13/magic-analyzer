@@ -65,8 +65,9 @@
       <input type="file" name="file" id="file" accept="video/*">
       <div class="row" style="margin-top:8px">
         <div>
-          <label>마술 종류 (중복 선택 가능)</label>
+          <label>마술 종류 (중복 선택 가능, 자동이면 영상 보고 판별)</label>
           <div class="opts">
+            <label><input type="checkbox" name="mode" value="auto" id="m_auto"> 🔮 자동 감지</label>
             <label><input type="checkbox" name="mode" value="card" checked> 🃏 카드</label>
             <label><input type="checkbox" name="mode" value="coin"> 🪙 동전</label>
           </div>
@@ -144,15 +145,17 @@ function poll(jobId){
   }, 2500);
 }
 
-function modeLabel(m){ return m === 'coin' ? '🪙 동전 분석' : '🃏 카드 분석'; }
+function modeLabel(m, auto){ const b = m === 'coin' ? '🪙 동전 분석' : '🃏 카드 분석'; return auto ? b + ' (🔮 자동 판별)' : b; }
 
-// 한 모드의 결과 묶음을 HTML로 렌더링. 파일 URL은 /jobs/<id>/<mode>/ 아래에서 가져온다.
+// 한 모드의 결과 묶음을 HTML로 렌더링. 파일 URL은 /jobs/<id>/<seg>/ 아래에서 가져온다.
+// seg는 폴더명(auto일 수 있음), mode는 판별된 실제 종류(card/coin).
 function renderMode(jobId, r){
   const rep = r.report || {};
   const segs = rep.segments || [];
-  const base = `/jobs/${jobId}/${r.mode}`;
+  const base = `/jobs/${jobId}/${r.seg || r.mode}`;
+  const isAuto = (r.seg === 'auto');
   let html = `<div class="card" style="border-left:3px solid var(--accent)">
-    <h2 style="margin:0">${modeLabel(r.mode)} <span class="mut" style="font-size:.9rem">· 의심 ${segs.length}개 · 길이 ${fmt(rep.duration_sec||0)}</span></h2></div>`;
+    <h2 style="margin:0">${modeLabel(r.mode, isAuto)} <span class="mut" style="font-size:.9rem">· 의심 ${segs.length}개 · 길이 ${fmt(rep.duration_sec||0)}</span></h2></div>`;
 
   if (r.summary) {
     html += `<div class="card"><h3>🤖 전체 트릭 추정 (에이전트)</h3>

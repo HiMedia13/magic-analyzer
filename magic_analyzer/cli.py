@@ -28,8 +28,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description="카드/동전 마술 영상에서 '수상한 순간'을 찾아주는 분석 도구",
     )
     p.add_argument("video", help="분석할 영상 파일 경로 또는 YouTube URL")
-    p.add_argument("--mode", choices=["card", "coin"], default="card",
-                   help="마술 종류 (기본: card)")
+    p.add_argument("--mode", choices=["card", "coin", "auto"], default="card",
+                   help="마술 종류. auto면 영상을 보고 카드/동전 자동 판별 (OPENAI_API_KEY 필요)")
     p.add_argument("--out", default="out", help="결과 출력 폴더 (기본: out)")
     p.add_argument("--stride", type=int, default=1,
                    help="N프레임마다 1장만 분석(속도용, 기본 1=전부)")
@@ -102,6 +102,18 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- 0단계: 카드/동전 자동 판별 (--mode auto) ---
+    if args.mode == "auto":
+        print("[0/3] 카드/동전 자동 판별 중... (영상 프레임 분석)")
+        try:
+            from .classify import classify_video
+            args.mode = classify_video(str(video_path), model=args.llm_model)
+            print(f"      → '{args.mode}' 마술로 판별")
+        except Exception as e:
+            args.mode = "card"
+            print(f"      [경고] 자동 판별 실패({e}) → 기본 'card'로 진행",
+                  file=sys.stderr)
 
     # --- 1단계: 손 추적 ---
     print(f"[1/3] 손 추적 중... ({video_path.name}, mode={args.mode})")

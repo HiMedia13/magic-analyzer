@@ -31,7 +31,8 @@ app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 업로드 최대 500MB
 _jobs: dict[str, dict] = {}  # job_id -> {proc, dir, modes, idx, video_arg, ...}
 _status_lock = threading.Lock()  # /status 시퀀서 전이를 원자화(중복 spawn 방지)
 
-MODES = ("card", "coin")  # 분석 가능한 마술 종류
+MODES = ("card", "coin")          # 선택 가능한 실제 모드
+SEG_OK = ("card", "coin", "auto")  # 결과 폴더(세그먼트)로 허용되는 이름
 
 
 @app.route("/")
@@ -60,9 +61,10 @@ def analyze():
     job_dir = JOBS_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    # 모드 다중 선택: 체크된 것 중 유효한 것만, 순서 유지·중복 제거. 없으면 card.
-    modes = [m for m in request.form.getlist("mode") if m in MODES]
-    modes = list(dict.fromkeys(modes)) or ["card"]
+    # 모드 선택: auto가 있으면 단일 auto 실행(영상 보고 판별), 아니면 card/coin 다중.
+    sel = [m for m in request.form.getlist("mode") if m in SEG_OK]
+    sel = list(dict.fromkeys(sel))
+    modes = ["auto"] if "auto" in sel else ([m for m in sel if m in MODES] or ["card"])
 
     url = (request.form.get("url") or "").strip()
     if url:
@@ -94,22 +96,24 @@ def _read_json(path: Path):
         return None
 
 
-def _collect(mode_dir: Path, mode: str) -> dict:
-    """한 모드 폴더의 결과(리포트·LLM·프레임·마킹영상)를 한 묶음으로 모은다."""
+def _collect(mode_dir: Path, seg: str) -> dict:
+    """한 폴더(seg)의 결과를 묶는다. seg는 폴더명(auto 가능), mode는 판별된 실제 종류."""
     report = _read_json(mode_dir / "report.json") or {}
+    resolved = report.get("mode", seg if seg in MODES else "card")
     llm = _read_json(mode_dir / "llm.json")
     # LLM 결과를 peak_sec로 매칭해 세그먼트에 붙임
     llm_by_peak = {}
     if llm:
         for r in llm.get("results", []):
             llm_by_peak[round(r.get("peak_sec", -1), 1)] = r.get("inference", "")
-    for seg in report.get("segments", []):
-        key = round(seg.get("peak_sec", -2), 1)
+    for s in report.get("segments", []):  # 'seg' 파라미터와 충돌 금지(별도 이름)
+        key = round(s.get("peak_sec", -2), 1)
         if key in llm_by_peak:
-            seg["inference"] = llm_by_peak[key]
+            s["inference"] = llm_by_peak[key]
     frames = sorted(p.name for p in mode_dir.glob("suspect_*.jpg"))
     return {
-        "mode": mode,
+        "mode": resolved,   # 판별된 실제 종류(라벨용)
+        "seg": seg,         # 결과 폴더명(파일 URL용, auto 가능)
         "report": report,
         "summary": (llm or {}).get("summary"),     # 에이전트 전체 트릭 추정
         "techniques": (llm or {}).get("techniques", []),  # 기법 설명 + 참고 영상
@@ -162,8 +166,8 @@ def status(job_id):
 
 @app.route("/jobs/<job_id>/<mode>/<path:filename>")
 def job_file(job_id, mode, filename):
-    # 모드 화이트리스트 + secure_filename으로 경로 탈출 방지
-    if mode not in MODES:
+    # 세그먼트 화이트리스트 + secure_filename으로 경로 탈출 방지
+    if mode not in SEG_OK:
         abort(404)
     safe = secure_filename(filename)
     if not safe:
