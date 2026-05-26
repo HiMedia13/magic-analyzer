@@ -48,9 +48,18 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 | `--mode {card,coin}` | 마술 종류 (기본 card) |
 | `--out DIR` | 결과 폴더 (기본 `out`) |
 | `--annotate` | 손 관절+배너 표시된 `annotated.mp4` 저장 |
-| `--save-frames K` | 상위 K개 의심 구간 정점 프레임 이미지 저장 |
+| `--save-frames K` | 상위 K개 의심 순간 정점 프레임 이미지 저장 |
 | `--stride N` | N프레임마다 1장만 분석(속도용) |
-| `--score-thresh F` | 의심 임계값(낮출수록 많이 잡음) |
+| `--score-thresh F` | 봉우리 채택 임계값 (기본 0.9, 낮출수록 많이 잡음) |
+| `--min-gap S` | 의심 순간 사이 최소 간격 초 (기본 1.2) |
+| `--window S` | 봉우리 앞뒤로 구간에 포함할 초 (기본 0.8) |
+| `--max-results N` | 최대 의심 순간 개수 (기본: 제한 없음) |
+
+## 좋은 결과를 위한 팁 (실측 기반)
+- **클로즈업 + 단독 출연** 영상에서 가장 잘 작동한다. 손이 화면을 충분히 채워야
+  MediaPipe가 두 손을 안정적으로 추적한다. (카드 튜토리얼/테이블 클로즈업이 이상적)
+- **무대 와이드샷 + 관객 동석**은 부정확하다 — 엉뚱한 사람 손을 잡거나 작은 손을 놓친다.
+- 너무 적게/많이 잡히면 `--score-thresh`로 조절 (기본 0.9 ≈ 상위 5% 순간).
 
 ## 출력물 (`out/`)
 - `report.txt` — 사람이 읽는 타임라인 리포트
@@ -59,9 +68,20 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 - `suspect_NN_*.jpg` — (옵션) 의심 구간 정점 프레임
 
 ## 동작 원리
-1. **손 추적** — MediaPipe Hands로 프레임마다 손 21개 관절을 정규화 좌표로 추출
-2. **신호 계산** — 손 개수 변화 / 가장자리 접촉 / 두 손 거리 / 이동속도 / 펼침정도 변화
-3. **점수화·구간화** — 모드별 가중합 → 스무딩 → 임계 초과 구간 병합·랭킹
+1. **손 추적** — MediaPipe Tasks(HandLandmarker, VIDEO 모드)로 프레임마다 손 21개 관절을
+   정규화 좌표로 추출
+2. **신호 계산** — 손 개수 변화(VANISH) / 가장자리 *진입 이벤트*(BORDER) / 두 손 거리(CONTACT)
+   / 이동속도(FAST) / 펼침정도 급감(GRAB)
+3. **점수화·봉우리 검출** — 모드별 가중합 → 스무딩 → **점수 봉우리를 비최대 억제(NMS)**로
+   집어 `봉우리 ±window` 창으로 보고. 클로즈업은 신호가 상시 켜지므로 '임계 초과 구간'을
+   잡으면 수십 초 덩어리가 된다 — 봉우리만 집어 또렷한 순간을 준다.
+
+## 개발용 튜닝
+`scripts/tune.py` 는 손 추적 결과를 pickle로 캐시한 뒤 detect 파라미터만 바꿔가며
+빠르게 비교한다(영상당 추적 1회). 점수 분포(`--hist`)도 출력한다.
+```powershell
+python scripts/tune.py samples/coin.mp4 --mode coin --score-thresh 1.0 --hist
+```
 
 ## 로드맵
 - [ ] 동전/카드 객체 자체 추적(사라짐 직접 감지)

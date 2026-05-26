@@ -29,8 +29,14 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="손 관절+의심구간이 표시된 영상 저장")
     p.add_argument("--save-frames", type=int, default=5, metavar="K",
                    help="상위 K개 의심 구간의 정점 프레임 이미지 저장 (기본 5, 0이면 끔)")
-    p.add_argument("--score-thresh", type=float, default=0.6,
-                   help="의심 구간 점수 임계값 (낮출수록 더 많이 잡음)")
+    p.add_argument("--score-thresh", type=float, default=0.9,
+                   help="의심 봉우리 점수 임계값 (낮출수록 더 많이 잡음)")
+    p.add_argument("--min-gap", type=float, default=1.2,
+                   help="의심 순간 사이 최소 간격(초) — 가까운 봉우리는 하나로")
+    p.add_argument("--window", type=float, default=0.8,
+                   help="봉우리 앞뒤로 구간에 포함할 시간(초)")
+    p.add_argument("--max-results", type=int, default=None,
+                   help="최대 의심 순간 개수 (기본: 제한 없음)")
     return p
 
 
@@ -67,7 +73,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- 2단계: 의심 구간 탐지 ---
     print("[2/3] 의심 구간 분석 중...")
-    segments = detect(frames, meta.fps, mode=args.mode, score_thresh=args.score_thresh)
+    segments = detect(frames, meta.fps, mode=args.mode,
+                      score_thresh=args.score_thresh, min_gap_sec=args.min_gap,
+                      window_sec=args.window, max_results=args.max_results)
 
     report_txt = format_report(segments, meta, args.mode)
     print()

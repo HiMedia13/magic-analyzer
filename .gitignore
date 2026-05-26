@@ -9,10 +9,14 @@ venv/
 models/
 *.task
 
-# 분석 결과물
+# 분석 결과물 / 테스트 샘플
 out/
-out_smoke/
+out*/
+samples/
 sample_smoke.mp4
+*.jpg
+*.jpeg
+*.png
 *.mp4
 *.mov
 *.avi
