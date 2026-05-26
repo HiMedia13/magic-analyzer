@@ -101,15 +101,17 @@ python webapp/app.py
 분석은 백그라운드로 돌아가고 화면이 진행상태를 폴링합니다. `AI 설명`을 켜려면
 `OPENAI_API_KEY`(.env)가 필요합니다.
 
-## 에이전트 분석 (LangGraph + LangSmith, 옵션)
-`--llm`을 켜면 단발 호출이 아니라 **LangGraph 에이전트**가 분석합니다:
+## 에이전트 분석 (LangGraph ReAct + 도구 호출 + LangSmith, 옵션)
+`--llm`을 켜면 고정 파이프라인이 아니라 **도구를 스스로 호출하는 ReAct 에이전트**
+(`langgraph.prebuilt.create_react_agent`, `gpt-4o`)가 분석합니다. 에이전트가 쓰는 도구:
 
-```
-START ─(구간별 fan-out)→ analyze_one ─→ synthesize ─→ END
-```
-- `analyze_one` — 의심 구간마다 **직전→정점→직후 3프레임**을 OpenAI 비전(`gpt-4o`)으로
-  분석(구간 병렬). 3프레임으로 슬레이트의 *움직임 흐름*을 보여주는 게 핵심.
-- `synthesize` — 구간별 가설을 모아 **"이 마술 전체가 어떤 트릭인지"** 추정.
+- **`list_suspect_moments()`** — 자동 탐지된 의심 순간(시각/신호/점수) 목록
+- **`inspect_moment(time_sec)`** — 그 시각의 프레임(직전/정점/직후)을 **비전으로 들여다보는**
+  도구. 에이전트가 *어디를 볼지 직접 결정*해 호출합니다.
+
+에이전트는 목록 확인 → 의심스러운 순간을 골라 inspect → 종합 결론(전체 트릭 추정)을 냅니다.
+도구 호출은 LangSmith 트레이스에 그대로 기록됩니다(`list_suspect_moments`, `inspect_moment`).
+이미지는 inspect 도구 안의 비전 서브호출에만 들어가 메인 트레이스가 가볍습니다.
 
 실행 과정은 **LangSmith**에 자동 기록됩니다(키가 있을 때). 키는 `.env`로 줍니다
 (`.env.example` 참고):

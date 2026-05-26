@@ -120,20 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     (out_dir / "report.txt").write_text(report_txt, encoding="utf-8")
     write_json(out_dir / "report.json", to_dict(segments, meta, args.mode))
 
-    # --- 3단계: 영상/프레임 출력 + (옵션) LLM용 프레임 수집 (영상 2차 패스) ---
+    # --- 3단계: 영상/프레임 출력 (영상 2차 패스) ---
     llm_segs = segments[:max(args.llm_top, 0)] if args.llm else []
-    # LLM용: 각 구간의 직전/정점/직후 프레임 인덱스를 미리 계산
-    off = max(1, int(0.4 * meta.fps))
-    triplet_targets: dict[int, list[tuple[int, str]]] = {}
-    triplet_store: dict[int, dict[str, "cv2.typing.MatLike"]] = {}
-    for pos, s in enumerate(llm_segs):
-        peak_idx = int(round(s.peak_sec * meta.fps))
-        triplet_store[pos] = {}
-        for slot, idx in (("before", peak_idx - off), ("peak", peak_idx),
-                          ("after", peak_idx + off)):
-            triplet_targets.setdefault(max(0, idx), []).append((pos, slot))
-
-    need_second_pass = args.annotate or args.save_frames > 0 or bool(llm_segs)
+    need_second_pass = args.annotate or args.save_frames > 0
     if need_second_pass and segments:
         print("[3/3] 마킹 영상/프레임 저장 중...")
         obs_by_index = {f.index: f for f in frames}
@@ -155,9 +144,6 @@ def main(argv: list[str] | None = None) -> int:
                     fn = out_dir / f"suspect_{saved + 1:02d}_{key:.2f}s.jpg"
                     cv2.imwrite(str(fn), draw_overlay(fr.image, obs, s))
                     saved += 1
-            # LLM용 프레임 수집(오버레이 없는 원본)
-            for pos, slot in triplet_targets.get(fr.index, ()):
-                triplet_store[pos][slot] = fr.image.copy()
         if writer is not None:
             writer.release()
         cap.release()
@@ -168,9 +154,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("[3/3] (저장할 영상/프레임 없음)")
 
-    # --- 4단계: LangGraph 에이전트 분석 (옵션) ---
+    # --- 4단계: 도구 호출 에이전트 분석 (옵션) ---
     if llm_segs:
-        _run_agent(llm_segs, triplet_store, args, out_dir)
+        _run_agent(llm_segs, video_path, meta.fps, args, out_dir)
 
     print(f"\n완료. 결과 폴더: {out_dir.resolve()}")
     return 0
@@ -181,22 +167,17 @@ def _fmt_ts(t: float) -> str:
     return f"{int(m):02d}:{s:05.2f}"
 
 
-def _run_agent(llm_segs, triplet_store, args, out_dir: Path) -> None:
-    """수집한 프레임을 LangGraph 에이전트(OpenAI 비전 + LangSmith 추적)로 분석."""
-    print(f"[4/4] LangGraph 에이전트 분석 중... ({args.llm_model}, "
-          f"상위 {len(llm_segs)}개 구간)")
+def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
+    """도구 호출 에이전트(ReAct, OpenAI 비전 도구 + LangSmith 추적)로 분석."""
+    print(f"[4/4] 도구 호출 에이전트 분석 중... ({args.llm_model}, "
+          f"의심 {len(llm_segs)}개 — 에이전트가 직접 inspect)")
 
-    # 구간별 입력 구성: 직전/정점/직후 프레임(BGR) 리스트
-    seg_dicts = []
-    for pos, seg in enumerate(llm_segs):
-        store = triplet_store.get(pos, {})
-        imgs = [store[k] for k in ("before", "peak", "after") if store.get(k) is not None]
-        seg_dicts.append({"peak_sec": seg.peak_sec, "score": seg.score,
-                          "top_signals": seg.top_signals, "images": imgs})
-
+    seg_metas = [{"peak_sec": s.peak_sec, "score": s.score,
+                  "top_signals": s.top_signals} for s in llm_segs]
     try:
         from .agent import analyze
-        result = analyze(seg_dicts, mode=args.mode, model=args.llm_model)
+        result = analyze(str(video_path), fps, seg_metas,
+                         mode=args.mode, model=args.llm_model, max_inspect=args.llm_top)
     except Exception as e:
         print(f"      [오류] 에이전트 실행 실패: {e}", file=sys.stderr)
         print("      OPENAI_API_KEY를 설정했는지 확인하세요.", file=sys.stderr)
@@ -205,8 +186,9 @@ def _run_agent(llm_segs, triplet_store, args, out_dir: Path) -> None:
     analyses = result.get("analyses", [])
     summary = result.get("summary", "")
 
-    lines = ["", "=" * 64, f" LangGraph 에이전트 분석 (OpenAI {args.llm_model})",
-             "=" * 64, "", "[전체 트릭 추정]", summary, "", "[구간별 추론]"]
+    lines = ["", "=" * 64, f" 도구 호출 에이전트 분석 (OpenAI {args.llm_model})",
+             "=" * 64, "", "[전체 트릭 추정]", summary, "",
+             "[에이전트가 들여다본 순간]"]
     results = []
     for i, a in enumerate(analyses):
         header = f"[{i + 1}] {_fmt_ts(a['peak_sec'])} (점수 {a.get('score', 0):.2f})"
