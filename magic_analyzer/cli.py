@@ -186,6 +186,7 @@ def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
     analyses = result.get("analyses", [])
     summary = result.get("summary", "")
     techniques = result.get("techniques", [])
+    matches = result.get("matches", [])
 
     lines = ["", "=" * 64, f" 도구 호출 에이전트 분석 (OpenAI {args.llm_model})",
              "=" * 64, "", "[전체 트릭 추정]", summary, ""]
@@ -205,6 +206,13 @@ def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
         lines += [header, f"  {hyp}", ""]
         results.append({"rank": i + 1, "peak_sec": round(a["peak_sec"], 2),
                         "inference": hyp})
+    if matches:
+        lines.append("[라이브러리 매칭(데이터 기반 유사도 0~1)]")
+        for m in matches:
+            top = ", ".join(f"{r['name_ko']} {r['similarity']:.2f}"
+                            for r in m["results"])
+            lines.append(f"  {_fmt_ts(m['time_sec'])}: {top}")
+        lines.append("")
     if techniques:
         print(f"\n      [사용된 기법] " +
               ", ".join(f"{t['name_ko']}" for t in techniques))
@@ -213,7 +221,7 @@ def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
     (out_dir / "llm.txt").write_text("\n".join(lines), encoding="utf-8")
     write_json(out_dir / "llm.json",
                {"model": args.llm_model, "summary": summary,
-                "techniques": techniques, "results": results})
+                "techniques": techniques, "matches": matches, "results": results})
     print(f"      → {out_dir / 'llm.txt'}")
 
 

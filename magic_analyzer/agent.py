@@ -114,6 +114,7 @@ def analyze(video_path: str, fps: float, segments: list[dict],
     read_frames = _make_frame_reader(video_path, fps)
     inspections: list[dict] = []
     techniques_found: list[dict] = []
+    matches: list[dict] = []  # match_technique 호출 결과(데이터 기반 유사도)
 
     @tool
     def list_suspect_moments() -> str:
@@ -183,6 +184,7 @@ def analyze(video_path: str, fps: float, segments: list[dict],
         res = match(sig, library, k=3)
         if not res:
             return "유사한 기법을 찾지 못했습니다."
+        matches.append({"time_sec": round(float(time_sec), 2), "results": res})
         return "라이브러리 매칭(유사도 0~1): " + ", ".join(
             f"{r['name_ko']} {r['similarity']:.2f}" for r in res)
 
@@ -205,7 +207,8 @@ def analyze(video_path: str, fps: float, segments: list[dict],
     analyses = sorted(inspections, key=lambda a: -_score_for(segments, a["peak_sec"]))
     for a in analyses:
         a["score"] = round(_score_for(segments, a["peak_sec"]), 3)
-    return {"analyses": analyses, "summary": summary, "techniques": techniques_found}
+    return {"analyses": analyses, "summary": summary,
+            "techniques": techniques_found, "matches": matches}
 
 
 def _score_for(segments: list[dict], time_sec: float) -> float:

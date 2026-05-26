@@ -173,6 +173,25 @@ function renderMode(jobId, r){
     html += `</div>`;
   }
 
+  if (r.matches && r.matches.length) {
+    html += `<div class="card"><h3>🔍 라이브러리 매칭 (데이터 기반 유사도)</h3>
+      <p class="mut" style="margin-top:0">의심 순간의 손 궤적을 기법 예시 라이브러리와 비교한 결과(0~1).</p>`;
+    r.matches.forEach(m => {
+      html += `<div class="seg"><div class="head"><span>${fmt(m.time_sec)}</span></div>`;
+      (m.results||[]).forEach(rr => {
+        const pct = Math.max(0, Math.min(100, Math.round(rr.similarity*100)));
+        html += `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+          <span style="width:130px">${rr.name_ko}</span>
+          <span style="flex:1;background:#0d0f14;border-radius:6px;overflow:hidden;height:14px">
+            <span style="display:block;height:100%;width:${pct}%;background:var(--ok)"></span></span>
+          <span class="mut" style="width:48px;text-align:right">${rr.similarity.toFixed(2)}</span>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
   if (r.video) {
     html += `<div class="card"><h3>마킹 영상</h3>
       <video controls src="${base}/annotated.webm"></video></div>`;

@@ -113,6 +113,7 @@ def _collect(mode_dir: Path, mode: str) -> dict:
         "report": report,
         "summary": (llm or {}).get("summary"),     # 에이전트 전체 트릭 추정
         "techniques": (llm or {}).get("techniques", []),  # 기법 설명 + 참고 영상
+        "matches": (llm or {}).get("matches", []),  # 라이브러리 데이터 기반 매칭
         "frames": frames,
         "video": (mode_dir / "annotated.webm").exists(),
     }
