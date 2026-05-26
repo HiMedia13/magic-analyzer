@@ -28,7 +28,8 @@ TECHNIQUES: dict[str, dict] = {
     },
     "classic_palm": {
         "ko": "클래식 팜", "en": "Classic Palm",
-        "aliases": ["classic palm", "클래식 팜", "팜", "palm", "palming"],
+        "aliases": ["classic palm", "클래식 팜", "팜", "palm", "palming",
+                    "팔밍", "팔름", "파밍", "팜링"],
         "type": "coin/card 겸용",
         "desc": ("손바닥 근육으로 동전(또는 카드)을 눌러 쥐어, 손을 자연스럽게 편 것처럼 "
                  "보이면서도 물건을 숨긴다. 손이 비어 보이지만 손바닥 안에 물체가 있다. "
