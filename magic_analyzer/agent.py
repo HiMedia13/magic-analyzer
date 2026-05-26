@@ -35,7 +35,8 @@ AGENT_SYSTEM = (
     "진행 방법:\n"
     "1) list_suspect_moments 로 자동 탐지된 의심 순간을 확인합니다.\n"
     "2) 의심스러운 순간을 골라 inspect_moment(time_sec)로 들여다봅니다. "
-    "(최대 6곳, 같은 곳 반복 금지.)\n"
+    "(최대 6곳, 같은 곳 반복 금지.) 또한 match_technique(time_sec)로 '예시 "
+    "라이브러리'와의 데이터 기반 유사도(어떤 기법과 닮았는지)도 확인하세요.\n"
     "3) 의심되는 기법마다 explain_technique(기법명)을 호출해 정확한 설명과 참고 "
     "영상 링크를 확보합니다. (예: explain_technique('프렌치 드롭'))\n"
     "4) 다음을 '자세히' 담은 결론을 한국어로 작성합니다:\n"
@@ -107,6 +108,9 @@ def analyze(video_path: str, fps: float, segments: list[dict],
     if not segments:
         return {"analyses": [], "summary": "분석할 구간이 없습니다."}
 
+    from .library import load_library, match, signature_from_video
+    library = load_library()
+
     read_frames = _make_frame_reader(video_path, fps)
     inspections: list[dict] = []
     techniques_found: list[dict] = []
@@ -167,16 +171,31 @@ def analyze(video_path: str, fps: float, segments: list[dict],
                                      "cues": "", "reference_url": url})
         return f"'{technique}'은 용어집에 없습니다. 일반 지식으로 설명하고, 참고 영상: {url}"
 
+    @tool
+    def match_technique(time_sec: float) -> str:
+        """주어진 시각의 손 궤적을 '기법 예시 라이브러리'와 비교해 가장 닮은 기법과
+        유사도(0~1)를 반환한다. 비전 관찰과 별개의 데이터 기반 단서."""
+        if not library:
+            return "기법 예시 라이브러리가 비어 있습니다(등록된 예시 없음)."
+        sig = signature_from_video(video_path, float(time_sec))
+        if sig is None:
+            return f"{time_sec:.1f}s의 손 궤적을 얻지 못했습니다(손 미검출)."
+        res = match(sig, library, k=3)
+        if not res:
+            return "유사한 기법을 찾지 못했습니다."
+        return "라이브러리 매칭(유사도 0~1): " + ", ".join(
+            f"{r['name_ko']} {r['similarity']:.2f}" for r in res)
+
     agent = create_react_agent(
         ChatOpenAI(model=model, max_tokens=1500),
-        [list_suspect_moments, inspect_moment, explain_technique],
+        [list_suspect_moments, inspect_moment, explain_technique, match_technique],
         prompt=AGENT_SYSTEM,
     )
     task = (f"이 {MODE_KO.get(mode, mode)} 영상의 비밀 기법을 분석하세요. "
             f"list_suspect_moments로 의심 순간을 확인하고, 의심스러운 곳을 "
             f"inspect_moment로 들여다본 뒤 전체 트릭과 핵심 비밀 동작을 종합 결론으로 쓰세요.")
     result = agent.invoke({"messages": [("user", task)]},
-                          config={"recursion_limit": 3 * max_inspect + 14})
+                          config={"recursion_limit": 4 * max_inspect + 16})
     summary = ""
     for m in reversed(result["messages"]):
         if getattr(m, "type", "") == "ai" and m.content:

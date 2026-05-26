@@ -111,8 +111,26 @@ python webapp/app.py
 - **`explain_technique(기법명)`** — 의심 기법의 **자세한 작동 원리 + 참고 튜토리얼 영상 링크**를
   반환(용어집 `techniques.py`). 결과는 "🎓 기법 설명" 카드로 표시됩니다.
 
-에이전트는 목록 확인 → 의심 순간 inspect → 기법 explain → 종합 결론(전체 트릭 추정)을 냅니다.
+- **`match_technique(time_sec)`** — 그 순간의 손 궤적을 **기법 예시 라이브러리와 비교**해
+  가장 닮은 기법과 유사도를 반환(데이터 기반 단서, 아래 참고).
+
+에이전트는 목록 확인 → 의심 순간 inspect/match → 기법 explain → 종합 결론(전체 트릭 추정)을 냅니다.
 기법 설명에는 작동 원리·관찰 단서·참고 영상이 포함되고, 분석한 의심 프레임(이미지)도 함께 봅니다.
+
+### 예시 라이브러리 (few-shot 매칭)
+대규모 학습 대신, **기법 시연 클립의 손 궤적 '시그니처'를 모아두고** 의심 순간을
+코사인 유사도로 비교합니다(`library.py`). 라이브러리는 점진적으로 키울 수 있습니다:
+
+```powershell
+# 자동: 기법 튜토리얼 검색·다운로드 → 최상위 의심 순간을 그 기법 예시로 등록
+python scripts/build_library.py --auto "double lift" "french drop" "classic palm"
+# 수동(가장 정확): 검증된 영상/시각을 직접 등록
+python scripts/build_library.py --technique "프렌치 드롭" --video coin.mp4 --time 12.3 --mode coin
+```
+
+시그니처는 손목 기준 정규화 + 고정 길이 리샘플(위치·크기·속도차 흡수)로 `library/signatures.json`에
+저장됩니다. 라이브러리가 비어 있으면 `match_technique`는 비활성(나머지 분석은 정상).
+한계: 튜토리얼 시연 ≠ 실제 공연, 작은 라이브러리는 커버리지 제한 — 검증된 예시를 늘릴수록 좋아집니다.
 도구 호출은 LangSmith 트레이스에 그대로 기록됩니다(`list_suspect_moments`, `inspect_moment`).
 이미지는 inspect 도구 안의 비전 서브호출에만 들어가 메인 트레이스가 가볍습니다.
 
