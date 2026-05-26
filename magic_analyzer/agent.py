@@ -109,7 +109,23 @@ def analyze(video_path: str, fps: float, segments: list[dict],
         return {"analyses": [], "summary": "분석할 구간이 없습니다."}
 
     from .library import load_library, match, signature_from_video
-    library = load_library()
+    from .techniques import TECHNIQUES
+
+    # 모드(카드/동전)에 맞는 기법만 매칭 후보로 둔다. 안 그러면 카드 영상이 동전
+    # 기법에 매칭되는 교차 오매칭이 생긴다(손 궤적만으로는 카드/동전 구분 불가).
+    _type_by_en = {e["en"]: e["type"] for e in TECHNIQUES.values()}
+
+    def _mode_ok(tech_en: str) -> bool:
+        t = _type_by_en.get(tech_en, "")
+        if not t:
+            return True            # 종류 미상은 통과(안전)
+        if mode == "card":
+            return "card" in t     # 'card' + 'coin/card 겸용'
+        if mode == "coin":
+            return "coin" in t     # 'coin' + 'coin/card 겸용'
+        return True
+
+    library = [e for e in load_library() if _mode_ok(e["technique"])]
 
     read_frames = _make_frame_reader(video_path, fps)
     inspections: list[dict] = []
