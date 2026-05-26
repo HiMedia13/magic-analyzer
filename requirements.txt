@@ -1,7 +1,10 @@
 opencv-python>=4.9
 mediapipe>=0.10.14
 numpy>=1.26,<2.0
-openai>=1.40          # --llm 옵션(OpenAI 비전 추론)에만 필요
-python-dotenv>=1.0    # .env 자동 로드(OPENAI_API_KEY)
+openai>=1.40          # --llm 옵션(OpenAI 비전)에만 필요
+langgraph>=0.2        # --llm: LangGraph 분석 에이전트
+langchain-openai>=0.2 # --llm: OpenAI 비전 LLM 래퍼
+langsmith>=0.1        # --llm: LangSmith 추적
+python-dotenv>=1.0    # .env 자동 로드(OPENAI_API_KEY, LANGSMITH_*)
 yt-dlp>=2024.1        # YouTube URL 입력 다운로드에만 필요
 flask>=3.0            # 웹 UI(webapp/app.py)에만 필요

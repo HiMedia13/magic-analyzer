@@ -141,6 +141,11 @@ function render(jobId, d){
   const segs = rep.segments || [];
   let html = `<div class="card"><h2 style="margin-top:0">결과 (${rep.mode||''} · 의심 ${segs.length}개 · 길이 ${fmt(rep.duration_sec||0)})</h2></div>`;
 
+  if (d.summary) {
+    html += `<div class="card"><h3>🤖 전체 트릭 추정 (에이전트)</h3>
+      <div class="infer">${d.summary}</div></div>`;
+  }
+
   if (d.video) {
     html += `<div class="card"><h3>마킹 영상</h3>
       <video controls src="/jobs/${jobId}/annotated.mp4"></video></div>`;

@@ -101,28 +101,32 @@ python webapp/app.py
 분석은 백그라운드로 돌아가고 화면이 진행상태를 폴링합니다. `AI 설명`을 켜려면
 `OPENAI_API_KEY`(.env)가 필요합니다.
 
-## LLM 추론 (OpenAI, 옵션)
-`--llm`을 켜면 상위 의심 구간마다 **직전→정점→직후 3프레임**을 OpenAI 비전 모델
-(`gpt-4o`)에 보내 "여기서 어떤 기법이 일어났을 법한지"를 한국어로 추론합니다.
-한 장이 아니라 3프레임을 보내 슬레이트의 *움직임 흐름*을 보여주는 게 핵심입니다.
+## 에이전트 분석 (LangGraph + LangSmith, 옵션)
+`--llm`을 켜면 단발 호출이 아니라 **LangGraph 에이전트**가 분석합니다:
 
-키는 환경변수 `OPENAI_API_KEY`로 주거나, 프로젝트 루트에 `.env` 파일로 넣으면
-자동 로드됩니다(`.env.example` 참고). **변수명은 정확히 `OPENAI_API_KEY`** 여야 합니다.
+```
+START ─(구간별 fan-out)→ analyze_one ─→ synthesize ─→ END
+```
+- `analyze_one` — 의심 구간마다 **직전→정점→직후 3프레임**을 OpenAI 비전(`gpt-4o`)으로
+  분석(구간 병렬). 3프레임으로 슬레이트의 *움직임 흐름*을 보여주는 게 핵심.
+- `synthesize` — 구간별 가설을 모아 **"이 마술 전체가 어떤 트릭인지"** 추정.
+
+실행 과정은 **LangSmith**에 자동 기록됩니다(키가 있을 때). 키는 `.env`로 줍니다
+(`.env.example` 참고):
+
+```dotenv
+OPENAI_API_KEY=sk-...           # 필수
+LANGSMITH_API_KEY=lsv2_...      # 선택(추적). 있으면 자동으로 추적 on + 프로젝트 magic-analyzer
+```
 
 ```powershell
-# 방법 A) .env 파일 (권장) — 프로젝트 루트에 생성
-#   OPENAI_API_KEY=sk-...
-# 방법 B) 환경변수로 직접
-$env:OPENAI_API_KEY = "sk-..."
-
 python main.py samples/coin_cu.mp4 --mode coin --llm --llm-top 5
 ```
 
-결과는 콘솔 + `out/llm.txt` + `out/llm.json`에 저장됩니다. 키가 없으면 분석은
-정상 진행되고 LLM 단계만 건너뜁니다(친절한 안내 출력). 비밀을 단정하지 않고
-"가능성"으로 제시하도록 프롬프트가 설계돼 있습니다.
+결과는 콘솔 + `out/llm.txt` + `out/llm.json`(구간별 추론 + **전체 트릭 추정**)에 저장됩니다.
+OpenAI 키가 없으면 분석은 정상 진행되고 에이전트 단계만 건너뜁니다.
 
-> 참고: 이 기능은 Anthropic이 아니라 **OpenAI SDK**(`openai`)를 사용합니다.
+> 참고: LLM은 Anthropic이 아니라 **OpenAI**(`langchain-openai`)를 사용합니다.
 
 ## 개발용 튜닝
 `scripts/tune.py` 는 손 추적 결과를 pickle로 캐시한 뒤 detect 파라미터만 바꿔가며

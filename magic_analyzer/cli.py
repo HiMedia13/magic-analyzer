@@ -155,45 +155,58 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("[3/3] (저장할 영상/프레임 없음)")
 
-    # --- 4단계: LLM 추론 (옵션) ---
+    # --- 4단계: LangGraph 에이전트 분석 (옵션) ---
     if llm_segs:
-        _run_llm(llm_segs, triplet_store, args, out_dir)
+        _run_agent(llm_segs, triplet_store, args, out_dir)
 
     print(f"\n완료. 결과 폴더: {out_dir.resolve()}")
     return 0
 
 
-def _run_llm(llm_segs, triplet_store, args, out_dir: Path) -> None:
-    """수집한 프레임을 OpenAI 비전 모델에 넘겨 구간별로 추론하고 결과를 저장."""
-    from .llm import FrameTriplet, LLMInferencer
+def _fmt_ts(t: float) -> str:
+    m, s = divmod(t, 60)
+    return f"{int(m):02d}:{s:05.2f}"
 
-    print(f"[4/4] OpenAI({args.llm_model}) 추론 중... (상위 {len(llm_segs)}개 구간)")
-    try:
-        infer = LLMInferencer(model=args.llm_model)
-    except Exception as e:  # 키 미설정/패키지 문제 등
-        print(f"      [오류] OpenAI 초기화 실패: {e}", file=sys.stderr)
-        print("      OPENAI_API_KEY 환경변수를 설정했는지 확인하세요.", file=sys.stderr)
-        return
 
-    lines = ["", "=" * 64, " LLM 추론 (OpenAI " + args.llm_model + ")", "=" * 64, ""]
-    results = []
+def _run_agent(llm_segs, triplet_store, args, out_dir: Path) -> None:
+    """수집한 프레임을 LangGraph 에이전트(OpenAI 비전 + LangSmith 추적)로 분석."""
+    print(f"[4/4] LangGraph 에이전트 분석 중... ({args.llm_model}, "
+          f"상위 {len(llm_segs)}개 구간)")
+
+    # 구간별 입력 구성: 직전/정점/직후 프레임(BGR) 리스트
+    seg_dicts = []
     for pos, seg in enumerate(llm_segs):
         store = triplet_store.get(pos, {})
-        triplet = FrameTriplet(before=store.get("before"),
-                               peak=store.get("peak"), after=store.get("after"))
-        try:
-            text = infer.infer(seg, triplet, args.mode)
-        except Exception as e:
-            text = f"(추론 실패: {e})"
-        m, s = divmod(seg.peak_sec, 60)
-        header = f"[{pos + 1}] {int(m):02d}:{s:05.2f} (점수 {seg.score:.2f})"
-        print(f"      {header}\n        {text}")
-        lines += [header, f"  {text}", ""]
-        results.append({"rank": pos + 1, "peak_sec": round(seg.peak_sec, 2),
-                        "inference": text})
+        imgs = [store[k] for k in ("before", "peak", "after") if store.get(k) is not None]
+        seg_dicts.append({"peak_sec": seg.peak_sec, "score": seg.score,
+                          "top_signals": seg.top_signals, "images": imgs})
+
+    try:
+        from .agent import analyze
+        result = analyze(seg_dicts, mode=args.mode, model=args.llm_model)
+    except Exception as e:
+        print(f"      [오류] 에이전트 실행 실패: {e}", file=sys.stderr)
+        print("      OPENAI_API_KEY를 설정했는지 확인하세요.", file=sys.stderr)
+        return
+
+    analyses = result.get("analyses", [])
+    summary = result.get("summary", "")
+
+    lines = ["", "=" * 64, f" LangGraph 에이전트 분석 (OpenAI {args.llm_model})",
+             "=" * 64, "", "[전체 트릭 추정]", summary, "", "[구간별 추론]"]
+    results = []
+    for i, a in enumerate(analyses):
+        header = f"[{i + 1}] {_fmt_ts(a['peak_sec'])} (점수 {a.get('score', 0):.2f})"
+        hyp = a.get("hypothesis", "")
+        print(f"      {header}\n        {hyp}")
+        lines += [header, f"  {hyp}", ""]
+        results.append({"rank": i + 1, "peak_sec": round(a["peak_sec"], 2),
+                        "inference": hyp})
+    print(f"\n      [전체 트릭 추정]\n        {summary}")
 
     (out_dir / "llm.txt").write_text("\n".join(lines), encoding="utf-8")
-    write_json(out_dir / "llm.json", {"model": args.llm_model, "results": results})
+    write_json(out_dir / "llm.json",
+               {"model": args.llm_model, "summary": summary, "results": results})
     print(f"      → {out_dir / 'llm.txt'}")
 
 
