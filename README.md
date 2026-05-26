@@ -53,7 +53,7 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 |------|------|
 | `--mode {card,coin}` | 마술 종류 (기본 card) |
 | `--out DIR` | 결과 폴더 (기본 `out`) |
-| `--annotate` | 손 관절+배너 표시된 `annotated.mp4` 저장 |
+| `--annotate` | 손 관절+배너 표시된 `annotated.webm` 저장 (브라우저 재생 가능) |
 | `--save-frames K` | 상위 K개 의심 순간 정점 프레임 이미지 저장 |
 | `--stride N` | N프레임마다 1장만 분석(속도용) |
 | `--score-thresh F` | 봉우리 채택 임계값 (기본 0.9, 낮출수록 많이 잡음) |
@@ -76,7 +76,7 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 ## 출력물 (`out/`)
 - `report.txt` — 사람이 읽는 타임라인 리포트
 - `report.json` — 구간/점수/신호 상세 (다른 도구·LLM에 넘기기 좋음)
-- `annotated.mp4` — (옵션) 관절·의심구간 표시 영상
+- `annotated.webm` — (옵션) 관절·의심구간 표시 영상 (VP8, 브라우저 재생 가능)
 - `suspect_NN_*.jpg` — (옵션) 의심 구간 정점 프레임
 - `llm.txt` / `llm.json` — (옵션 `--llm`) 구간별 OpenAI 비전 추론 결과
 
