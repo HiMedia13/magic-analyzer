@@ -134,7 +134,7 @@ python scripts/tune.py samples/coin.mp4 --mode coin --score-thresh 1.0 --hist
 ## 로드맵
 - [ ] 동전/카드 객체 자체 추적(사라짐 직접 감지)
 - [x] 의심 프레임을 멀티모달 LLM(OpenAI)에 넘겨 "무슨 일이 일어났는지" 추론
-- [ ] 간단한 웹 UI
+- [x] 간단한 웹 UI (Flask, `webapp/app.py`)
 
 ## 면책
 교육·연습 복기 목적의 보조 도구입니다.
