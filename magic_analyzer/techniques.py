@@ -104,6 +104,135 @@ TECHNIQUES: dict[str, dict] = {
         "cues": "카드 든 손이 덱을 스치는 순간 빠른 교체(FAST), 시선 분산 타이밍",
         "query": "top change card sleight tutorial",
     },
+    "color_change": {
+        "ko": "컬러 체인지", "en": "Color Change",
+        "aliases": ["color change", "컬러 체인지", "컬러체인지", "colour change", "색 변화"],
+        "type": "card",
+        "desc": ("보이던 카드가 순식간에 다른 카드로 '변하는' 시각적 효과. 손이나 다른 카드가 "
+                 "표면을 스치고 지나가는 순간, 앞면 카드를 비밀리에 바꿔치기한다."),
+        "cues": "손이 카드 앞면을 쓸고 지나간 직후 다른 카드, 빠른 손동작(FAST)",
+        "query": "card color change tutorial slow motion",
+    },
+    "elmsley_count": {
+        "ko": "엘름슬리 카운트", "en": "Elmsley Count",
+        "aliases": ["elmsley count", "elmsley", "엘름슬리", "엘름슬리 카운트", "ghost count"],
+        "type": "card",
+        "desc": ("4장을 4장처럼 세는 척하지만 그중 한 장을 숨겨, 실제와 다른 카드 구성을 "
+                 "보여준다. 패킷(소수 카드) 트릭의 기본기. 카운트 중 한 장이 슬쩍 감춰진다."),
+        "cues": "카드를 한 장씩 세는 동작 중 한 장이 가려짐, 손가락 미세 조작",
+        "query": "elmsley count tutorial",
+    },
+    "false_shuffle": {
+        "ko": "가짜 셔플", "en": "False Shuffle",
+        "aliases": ["false shuffle", "가짜 셔플", "거짓 셔플", "hindu shuffle control",
+                    "false riffle shuffle", "셔플 컨트롤"],
+        "type": "card",
+        "desc": ("섞는 것처럼 보이지만 특정 카드(보통 맨 위/아래)나 전체 순서를 그대로 "
+                 "유지한다. 힌두 셔플로 바텀 카드를 지키는 컨트롤이 대표적."),
+        "cues": "셔플하는데도 결정적 카드가 같은 위치에 유지됨",
+        "query": "false shuffle card control tutorial",
+    },
+    "card_force": {
+        "ko": "포스", "en": "Force",
+        "aliases": ["force", "포스", "card force", "카드 포스", "riffle force", "classic force"],
+        "type": "card",
+        "desc": ("관객이 '자유롭게' 고른 것처럼 느끼지만, 실제로는 마술사가 미리 정한 카드를 "
+                 "집게 만든다. 리플 포스(멈추라고 한 지점에 그 카드를 두는 식), 클래식 포스 등."),
+        "cues": "선택 타이밍을 마술사가 유도, 덱을 넘기다 특정 순간에 멈추게 함",
+        "query": "card force riffle classic tutorial",
+    },
+    "glide": {
+        "ko": "글라이드", "en": "Glide",
+        "aliases": ["glide", "글라이드"],
+        "type": "card",
+        "desc": ("덱 맨 아래 카드를 빼는 척하면서, 손가락으로 그 카드를 살짝 당겨두고 "
+                 "대신 두 번째 아래 카드를 빼낸다. 관객은 바닥 카드가 나왔다고 믿는다."),
+        "cues": "바닥에서 카드를 빼는 순간 손가락이 바닥 카드를 살짝 뒤로 당김",
+        "query": "glide card sleight tutorial",
+    },
+    "card_palm": {
+        "ko": "카드 팜(탑 팜)", "en": "Card Palm",
+        "aliases": ["card palm", "탑 팜", "top palm", "카드 팜", "palm card"],
+        "type": "card",
+        "desc": ("덱 맨 위 카드(들)를 손바닥에 몰래 숨겨 빼낸다. 손은 자연스럽게 비어 보이지만 "
+                 "손바닥 안에 카드가 있다. 카드를 주머니/다른 곳으로 옮기는 데 쓴다."),
+        "cues": "덱을 덮은 손이 떨어질 때 손바닥이 미묘하게 굽음, 손바닥 노출 회피",
+        "query": "top palm card tutorial",
+    },
+    "second_deal": {
+        "ko": "세컨드 딜", "en": "Second Deal",
+        "aliases": ["second deal", "세컨드 딜", "세컨딜", "second dealing"],
+        "type": "card",
+        "desc": ("맨 위 카드를 미는 척하면서 실제로는 바로 아래(두 번째) 카드를 딜한다. "
+                 "맨 위 카드를 보존하는 도박/마술 기술. 고난도."),
+        "cues": "딜할 때 맨 위 카드가 살짝 밀렸다 되돌아오고 둘째 카드가 나감",
+        "query": "second deal tutorial slow motion",
+    },
+    "bobo_switch": {
+        "ko": "보보 스위치", "en": "Bobo Switch",
+        "aliases": ["bobo switch", "보보 스위치", "보보스위치", "bobo"],
+        "type": "coin",
+        "desc": ("동전을 한 손에서 다른 손으로 옮기는 '척'하면서 실제로는 핑거팜으로 원래 손에 "
+                 "남긴다. 코인 어크로스/매트릭스 등에서 개수를 속이는 표준 스위치."),
+        "cues": "건네는 제스처(CONTACT) 직후 받은 손이 빈손, 원손 손가락 말림",
+        "query": "bobo switch coin tutorial",
+    },
+    "han_ping_chien": {
+        "ko": "한 핑 첸", "en": "Han Ping Chien",
+        "aliases": ["han ping chien", "한 핑 첸", "한핑첸", "hpc"],
+        "type": "coin",
+        "desc": ("한 손의 동전들을 테이블/다른 손으로 옮기는 큰 동작 속에서, 다른 손에 숨겨둔 "
+                 "동전을 비밀리에 떨어뜨려 개수가 순간 이동한 것처럼 보이게 한다."),
+        "cues": "양손이 동시에 움직이는 큰 제스처(FAST), 한쪽에서 몰래 릴리스",
+        "query": "han ping chien coin move tutorial",
+    },
+    "muscle_pass": {
+        "ko": "머슬 패스", "en": "Muscle Pass",
+        "aliases": ["muscle pass", "머슬 패스", "머슬패스", "근육 패스"],
+        "type": "coin",
+        "desc": ("손가락을 쓰지 않고 손바닥 근육의 압력만으로 동전을 한 손에서 다른 손으로 "
+                 "'튕겨' 보낸다. 순간이동처럼 보이는 고난도 플러리시 겸 비밀 이동."),
+        "cues": "손가락 움직임 없이 동전이 손 사이를 순간 이동",
+        "query": "muscle pass coin tutorial",
+    },
+    "spellbound": {
+        "ko": "스펠바운드", "en": "Spellbound",
+        "aliases": ["spellbound", "스펠바운드"],
+        "type": "coin",
+        "desc": ("손가락 사이에 든 동전이 계속 다른 동전(은화↔동화 등)으로 바뀌는 연속 변화. "
+                 "두 동전을 썸팜/핀치로 번갈아 보여주며 하나처럼 속인다."),
+        "cues": "엄지로 쓸어내릴 때마다 앞 동전이 바뀜, 손등 뒤에 둘째 동전 은닉",
+        "query": "spellbound coin routine tutorial",
+    },
+    "lapping": {
+        "ko": "래핑", "en": "Lapping",
+        "aliases": ["lapping", "래핑", "랩핑", "lap"],
+        "type": "coin/card 겸용",
+        "desc": ("물체를 몰래 무릎(lap) 위로 떨어뜨려 손에서 사라진 것처럼 만든다. 앉아서 하는 "
+                 "테이블 마술에서 흔하며, 손은 아무것도 안 한 듯 깨끗해 보인다."),
+        "cues": "물체를 쥔 손이 테이블 가장자리로 가는 순간 사라짐(BORDER/VANISH)",
+        "query": "lapping magic technique tutorial",
+    },
+    "misdirection": {
+        "ko": "미스디렉션", "en": "Misdirection",
+        "aliases": ["misdirection", "미스디렉션", "미스디렉션", "시선 분산", "주의 분산"],
+        "type": "심리(공통)",
+        "desc": ("손기술 자체가 아니라, 결정적 비밀 동작의 순간에 관객의 시선·주의를 다른 곳으로 "
+                 "돌리는 심리 기법. 시선·말·큰 동작으로 작은 비밀 동작을 가린다. 모든 슬레이트의 "
+                 "성공을 좌우한다."),
+        "cues": "비밀 동작 순간에 반대 손/얼굴/말로 주의를 끎",
+        "query": "misdirection magic explained",
+    },
+    "gimmick": {
+        "ko": "기믹(특수 도구)", "en": "Gimmick",
+        "aliases": ["gimmick", "기믹", "기믹 코인", "gimmicked", "장치"],
+        "type": "도구(공통)",
+        "desc": ("손기술이 아니라 특수 제작된 도구로 효과를 낸다 — 기믹 코인(접히는/껍데기 동전), "
+                 "더블페이스 카드, 자석, 투명실(IT) 등. 영상에서 손동작이 너무 깨끗한데 효과가 "
+                 "강하면 기믹을 의심할 수 있다."),
+        "cues": "뚜렷한 슬레이트 없이 효과 발생, 특정 각도만 보여줌",
+        "query": "magic gimmick coin card explained",
+    },
 }
 
 
@@ -112,17 +241,24 @@ def _norm(s: str) -> str:
 
 
 def lookup(name: str) -> dict | None:
-    """기법명(한/영, 느슨)으로 용어집 항목을 찾는다. 못 찾으면 None."""
+    """기법명(한/영, 느슨)으로 용어집 항목을 찾는다. 못 찾으면 None.
+
+    매칭 우선순위: (1) 정확히 일치하면 즉시 반환, (2) 별칭이 질의 안에 포함되면
+    '가장 긴 별칭'이 매칭된 항목을 택한다. (예: '머슬 패스'가 '패스'보다 우선)
+    """
     q = _norm(name)
+    best, best_len = None, 0
     for entry in TECHNIQUES.values():
-        if q in [_norm(a) for a in entry["aliases"]] or q == _norm(entry["en"]) \
-                or q == _norm(entry["ko"]):
-            return entry
-        # 부분 포함(예: "프렌치 드롭으로" → "프렌치 드롭")
-        for a in entry["aliases"]:
-            if _norm(a) in q or q in _norm(a):
-                return entry
-    return None
+        cands = [_norm(a) for a in entry["aliases"]]
+        cands += [_norm(entry["en"]), _norm(entry["ko"])]
+        for a in cands:
+            if not a:
+                continue
+            if q == a:
+                return entry              # 정확 일치 = 최우선
+            if a in q and len(a) > best_len:  # 별칭이 질의에 포함 → 가장 긴 것 채택
+                best, best_len = entry, len(a)
+    return best
 
 
 def entry_to_dict(entry: dict) -> dict:
