@@ -31,15 +31,18 @@ MODE_KO = {"card": "카드 마술", "coin": "동전 마술"}
 
 AGENT_SYSTEM = (
     "당신은 클로즈업 마술(카드·동전)의 기법을 분석하는 전문가 에이전트입니다. "
-    "교육·복기 목적으로 한 영상의 '비밀 동작'을 추론합니다.\n"
+    "교육·복기 목적으로 한 영상의 '비밀 동작'을 추론하고 '기법 자체를 자세히 설명'합니다.\n"
     "진행 방법:\n"
-    "1) 먼저 list_suspect_moments 로 자동 탐지된 의심 순간을 확인합니다.\n"
-    "2) 점수가 높거나 신호가 의심스러운 순간을 골라 inspect_moment(time_sec)로 "
-    "들여다봅니다. (최대 6곳 정도. 같은 곳을 반복하지 마세요.)\n"
-    "3) 관찰을 종합해, 이 마술 전체가 어떤 트릭이며 핵심 비밀 동작이 언제·무엇이었을지 "
-    "한국어로 결론을 작성합니다.\n"
-    "확신할 수 없으면 단정하지 말고 가능성으로 제시하고, 근거가 부족하면 솔직히 "
-    "'판단 어려움'이라고 하세요. 마술 용어(더블리프트·팜·프렌치드롭·패스 등)를 활용하세요."
+    "1) list_suspect_moments 로 자동 탐지된 의심 순간을 확인합니다.\n"
+    "2) 의심스러운 순간을 골라 inspect_moment(time_sec)로 들여다봅니다. "
+    "(최대 6곳, 같은 곳 반복 금지.)\n"
+    "3) 의심되는 기법마다 explain_technique(기법명)을 호출해 정확한 설명과 참고 "
+    "영상 링크를 확보합니다. (예: explain_technique('프렌치 드롭'))\n"
+    "4) 다음을 '자세히' 담은 결론을 한국어로 작성합니다:\n"
+    "   - 이 마술이 무엇을 보여주는 트릭인지\n"
+    "   - 사용된 기법 각각이 '어떻게 작동하는지' (동작 원리)\n"
+    "   - 영상의 어느 순간·어떤 손동작이 그 근거인지 (관찰된 단서)\n"
+    "확신 없으면 단정 말고 가능성으로, 근거 부족하면 '판단 어려움'이라고 하세요."
 )
 VISION_SYSTEM = (
     "마술 분석용입니다. 연속 프레임(직전→정점→직후)에서 두 손의 위치/모양 변화를 "
@@ -106,6 +109,7 @@ def analyze(video_path: str, fps: float, segments: list[dict],
 
     read_frames = _make_frame_reader(video_path, fps)
     inspections: list[dict] = []
+    techniques_found: list[dict] = []
 
     @tool
     def list_suspect_moments() -> str:
@@ -143,16 +147,36 @@ def analyze(video_path: str, fps: float, segments: list[dict],
                             "top_signals": sig})
         return desc
 
+    @tool
+    def explain_technique(technique: str) -> str:
+        """의심되는 마술 기법의 자세한 설명(작동 원리)과 참고 튜토리얼 영상 링크를 반환한다.
+        기법명을 한글 또는 영어로 입력한다. 예: '프렌치 드롭', 'double lift'."""
+        from .techniques import entry_to_dict, lookup, search_url
+        e = lookup(technique)
+        if e:
+            d = entry_to_dict(e)
+            if not any(t["name_en"] == d["name_en"] for t in techniques_found):
+                techniques_found.append(d)
+            return (f"{d['name_ko']} ({d['name_en']}, {d['type']})\n"
+                    f"작동 원리: {d['desc']}\n관찰 단서: {d['cues']}\n"
+                    f"참고 영상: {d['reference_url']}")
+        url = search_url(technique)
+        if not any(t["name_en"] == technique for t in techniques_found):
+            techniques_found.append({"name_ko": technique, "name_en": technique,
+                                     "type": "", "desc": "(용어집에 없음 — 일반 지식 기반)",
+                                     "cues": "", "reference_url": url})
+        return f"'{technique}'은 용어집에 없습니다. 일반 지식으로 설명하고, 참고 영상: {url}"
+
     agent = create_react_agent(
-        ChatOpenAI(model=model, max_tokens=1200),
-        [list_suspect_moments, inspect_moment],
+        ChatOpenAI(model=model, max_tokens=1500),
+        [list_suspect_moments, inspect_moment, explain_technique],
         prompt=AGENT_SYSTEM,
     )
     task = (f"이 {MODE_KO.get(mode, mode)} 영상의 비밀 기법을 분석하세요. "
             f"list_suspect_moments로 의심 순간을 확인하고, 의심스러운 곳을 "
             f"inspect_moment로 들여다본 뒤 전체 트릭과 핵심 비밀 동작을 종합 결론으로 쓰세요.")
     result = agent.invoke({"messages": [("user", task)]},
-                          config={"recursion_limit": 2 * max_inspect + 8})
+                          config={"recursion_limit": 3 * max_inspect + 14})
     summary = ""
     for m in reversed(result["messages"]):
         if getattr(m, "type", "") == "ai" and m.content:
@@ -162,7 +186,7 @@ def analyze(video_path: str, fps: float, segments: list[dict],
     analyses = sorted(inspections, key=lambda a: -_score_for(segments, a["peak_sec"]))
     for a in analyses:
         a["score"] = round(_score_for(segments, a["peak_sec"]), 3)
-    return {"analyses": analyses, "summary": summary}
+    return {"analyses": analyses, "summary": summary, "techniques": techniques_found}
 
 
 def _score_for(segments: list[dict], time_sec: float) -> float:

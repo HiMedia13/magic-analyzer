@@ -185,10 +185,18 @@ def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
 
     analyses = result.get("analyses", [])
     summary = result.get("summary", "")
+    techniques = result.get("techniques", [])
 
     lines = ["", "=" * 64, f" 도구 호출 에이전트 분석 (OpenAI {args.llm_model})",
-             "=" * 64, "", "[전체 트릭 추정]", summary, "",
-             "[에이전트가 들여다본 순간]"]
+             "=" * 64, "", "[전체 트릭 추정]", summary, ""]
+    if techniques:
+        lines.append("[사용된 기법 설명]")
+        for t in techniques:
+            lines += [f"· {t['name_ko']} ({t['name_en']})",
+                      f"  {t['desc']}",
+                      f"  관찰 단서: {t.get('cues', '')}",
+                      f"  참고 영상: {t['reference_url']}", ""]
+    lines.append("[에이전트가 들여다본 순간]")
     results = []
     for i, a in enumerate(analyses):
         header = f"[{i + 1}] {_fmt_ts(a['peak_sec'])} (점수 {a.get('score', 0):.2f})"
@@ -197,11 +205,15 @@ def _run_agent(llm_segs, video_path, fps, args, out_dir: Path) -> None:
         lines += [header, f"  {hyp}", ""]
         results.append({"rank": i + 1, "peak_sec": round(a["peak_sec"], 2),
                         "inference": hyp})
+    if techniques:
+        print(f"\n      [사용된 기법] " +
+              ", ".join(f"{t['name_ko']}" for t in techniques))
     print(f"\n      [전체 트릭 추정]\n        {summary}")
 
     (out_dir / "llm.txt").write_text("\n".join(lines), encoding="utf-8")
     write_json(out_dir / "llm.json",
-               {"model": args.llm_model, "summary": summary, "results": results})
+               {"model": args.llm_model, "summary": summary,
+                "techniques": techniques, "results": results})
     print(f"      → {out_dir / 'llm.txt'}")
 
 

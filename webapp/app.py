@@ -113,6 +113,7 @@ def status(job_id):
         "job_id": job_id,
         "report": report,
         "summary": (llm or {}).get("summary"),  # 에이전트 전체 트릭 추정
+        "techniques": (llm or {}).get("techniques", []),  # 기법 설명 + 참고 영상
         "frames": frames,
         "video": (job_dir / "annotated.webm").exists(),
         "log": log_tail,
