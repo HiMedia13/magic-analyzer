@@ -4,3 +4,4 @@ numpy>=1.26,<2.0
 openai>=1.40          # --llm 옵션(OpenAI 비전 추론)에만 필요
 python-dotenv>=1.0    # .env 자동 로드(OPENAI_API_KEY)
 yt-dlp>=2024.1        # YouTube URL 입력 다운로드에만 필요
+flask>=3.0            # 웹 UI(webapp/app.py)에만 필요

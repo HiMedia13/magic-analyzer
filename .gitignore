@@ -19,6 +19,7 @@ out/
 out*/
 samples/
 downloads/
+webapp/jobs/
 sample_smoke.mp4
 *.jpg
 *.jpeg
