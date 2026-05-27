@@ -31,20 +31,21 @@ def _data_url(image_bgr, max_edge: int = 384) -> str:
 def _sample_frames(video_path: str, n: int) -> list:
     """영상 전반에서 n장을 고르게 샘플(앞뒤 5%는 제외)."""
     cap = cv2.VideoCapture(str(video_path))
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
     frames = []
-    if total <= 0:
+    try:
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+        if total <= 0:
+            return frames
+        lo, hi = int(total * 0.05), int(total * 0.95)
+        step = max(1, (hi - lo) // max(1, n))
+        for k in range(n):
+            idx = min(hi, lo + k * step)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+            ok, img = cap.read()
+            if ok:
+                frames.append(img)
+    finally:
         cap.release()
-        return frames
-    lo, hi = int(total * 0.05), int(total * 0.95)
-    step = max(1, (hi - lo) // max(1, n))
-    for k in range(n):
-        idx = min(hi, lo + k * step)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
-        ok, img = cap.read()
-        if ok:
-            frames.append(img)
-    cap.release()
     return frames
 
 

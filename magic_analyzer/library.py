@@ -53,20 +53,22 @@ def signature_from_video(video_path: str, time_sec: float,
     import cv2
     cap, meta = open_video(video_path)
     fps = meta.fps
-    start_idx = max(0, int((time_sec - window) * fps))
-    end_idx = int((time_sec + window) * fps)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_idx)
     vecs: list[np.ndarray | None] = []
-    with HandTracker() as tracker:
-        idx = start_idx
-        while idx <= end_idx:
-            ok, img = cap.read()
-            if not ok:
-                break
-            obs = tracker.process(idx, idx / fps, img)
-            vecs.append(_primary_vec(obs))
-            idx += 1
-    cap.release()
+    try:
+        start_idx = max(0, int((time_sec - window) * fps))
+        end_idx = int((time_sec + window) * fps)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_idx)
+        with HandTracker() as tracker:
+            idx = start_idx
+            while idx <= end_idx:
+                ok, img = cap.read()
+                if not ok:
+                    break
+                obs = tracker.process(idx, idx / fps, img)
+                vecs.append(_primary_vec(obs))
+                idx += 1
+    finally:
+        cap.release()
     return _signature(vecs)
 
 

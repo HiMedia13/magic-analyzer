@@ -22,7 +22,6 @@ from .assets import ensure_hand_model
 # MediaPipe 손 관절 인덱스
 WRIST = 0
 FINGERTIPS = (4, 8, 12, 16, 20)   # 엄지~새끼 끝
-MCPS = (5, 9, 13, 17)             # 검지~새끼 손가락 뿌리(관절)
 
 
 @dataclass
@@ -33,7 +32,6 @@ class HandObs:
     bbox: tuple[float, float, float, float]  # (xmin, ymin, xmax, ymax) 0~1
     openness: float          # 손 펼침정도 (작을수록 주먹에 가까움)
     landmarks: np.ndarray    # (21, 2)
-    at_border: bool          # 손이 화면 가장자리에 닿았는지
 
 
 @dataclass
@@ -51,11 +49,6 @@ def _openness(lm: np.ndarray) -> float:
     palm = np.linalg.norm(lm[9] - wrist) + 1e-6  # 손목~중지 뿌리 = 손 크기 기준
     spread = np.mean([np.linalg.norm(t - wrist) for t in tips])
     return float(spread / palm)
-
-
-def _at_border(bbox: tuple[float, float, float, float], margin: float = 0.04) -> bool:
-    xmin, ymin, xmax, ymax = bbox
-    return xmin <= margin or ymin <= margin or xmax >= 1 - margin or ymax >= 1 - margin
 
 
 class HandTracker:
@@ -101,7 +94,6 @@ class HandTracker:
                 bbox=bbox,
                 openness=_openness(lm),
                 landmarks=lm,
-                at_border=_at_border(bbox),
             ))
         return obs
 

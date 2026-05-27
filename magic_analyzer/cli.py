@@ -154,26 +154,28 @@ def main(argv: list[str] | None = None) -> int:
         cap, meta = open_video(video_path)
         writer = make_writer(out_dir / "annotated.webm", meta) if args.annotate else None
         saved = 0
-        for fr in iter_frames(cap, meta.fps, stride=1):
-            obs = obs_by_index.get(fr.index)
-            active = next((s for s in segments
-                           if s.start_sec <= fr.time_sec <= s.end_sec), None)
+        try:
+            for fr in iter_frames(cap, meta.fps, stride=1):
+                obs = obs_by_index.get(fr.index)
+                active = next((s for s in segments
+                               if s.start_sec <= fr.time_sec <= s.end_sec), None)
+                if writer is not None:
+                    writer.write(draw_overlay(fr.image, obs, active))
+                    if total and fr.index and fr.index % 600 == 0:
+                        print(f"      ...영상 인코딩 {fr.index}/{total} "
+                              f"({100 * fr.index / total:.0f}%)")
+                # 정점 프레임 저장
+                if args.save_frames > 0:
+                    key = round(fr.time_sec, 2)
+                    if key in peaks:
+                        s = peaks.pop(key)
+                        fn = out_dir / f"suspect_{saved + 1:02d}_{key:.2f}s.jpg"
+                        cv2.imwrite(str(fn), draw_overlay(fr.image, obs, s))
+                        saved += 1
+        finally:
             if writer is not None:
-                writer.write(draw_overlay(fr.image, obs, active))
-                if total and fr.index and fr.index % 600 == 0:
-                    print(f"      ...영상 인코딩 {fr.index}/{total} "
-                          f"({100 * fr.index / total:.0f}%)")
-            # 정점 프레임 저장
-            if args.save_frames > 0:
-                key = round(fr.time_sec, 2)
-                if key in peaks:
-                    s = peaks.pop(key)
-                    fn = out_dir / f"suspect_{saved + 1:02d}_{key:.2f}s.jpg"
-                    cv2.imwrite(str(fn), draw_overlay(fr.image, obs, s))
-                    saved += 1
-        if writer is not None:
-            writer.release()
-        cap.release()
+                writer.release()
+            cap.release()
         if args.annotate:
             print(f"      → {out_dir / 'annotated.webm'}")
         if saved:

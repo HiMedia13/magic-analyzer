@@ -20,5 +20,13 @@ def ensure_hand_model() -> Path:
     if dst.exists() and dst.stat().st_size > 0:
         return dst
     print(f"      손 모델 다운로드 중... ({HAND_MODEL_URL.split('/')[-1]})")
-    urllib.request.urlretrieve(HAND_MODEL_URL, dst)
+    # 임시 파일로 받은 뒤 원자적으로 교체 — 중단되면 .part만 남고 손상된 모델이
+    # dst 자리에 남지 않는다(다음 실행에서 size>0 검사를 통과해버리는 문제 방지).
+    tmp = dst.with_name(dst.name + ".part")
+    try:
+        urllib.request.urlretrieve(HAND_MODEL_URL, tmp)
+        tmp.replace(dst)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return dst

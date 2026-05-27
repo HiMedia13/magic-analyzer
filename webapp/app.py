@@ -50,9 +50,13 @@ def _spawn(job: dict, mode: str) -> subprocess.Popen:
         cmd.append("--annotate")
     if job["llm"]:
         cmd += ["--llm", "--llm-top", "6"]
+    # 자식이 핸들을 상속하므로, Popen 직후 부모 쪽 핸들은 닫아 누수를 막는다.
     log = open(out_dir / "log.txt", "w", encoding="utf-8")
-    return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
-                            cwd=str(PROJECT))
+    try:
+        return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
+                                cwd=str(PROJECT))
+    finally:
+        log.close()
 
 
 @app.route("/analyze", methods=["POST"])

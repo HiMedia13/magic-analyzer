@@ -60,4 +60,7 @@ def make_writer(path: str | Path, meta: VideoMeta) -> cv2.VideoWriter:
     # 없어 avc1가 안 되므로, 웹 표시는 webm을 쓴다.
     tag = "VP80" if Path(path).suffix.lower() == ".webm" else "mp4v"
     fourcc = cv2.VideoWriter_fourcc(*tag)
-    return cv2.VideoWriter(str(path), fourcc, meta.fps, (meta.width, meta.height))
+    writer = cv2.VideoWriter(str(path), fourcc, meta.fps, (meta.width, meta.height))
+    if not writer.isOpened():
+        raise RuntimeError(f"VideoWriter 초기화 실패(코덱 {tag} 미지원?): {path}")
+    return writer
