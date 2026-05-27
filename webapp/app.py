@@ -105,15 +105,16 @@ def _collect(mode_dir: Path, seg: str) -> dict:
     report = _read_json(mode_dir / "report.json") or {}
     resolved = report.get("mode", seg if seg in MODES else "card")
     llm = _read_json(mode_dir / "llm.json")
-    # LLM 결과를 peak_sec로 매칭해 세그먼트에 붙임
-    llm_by_peak = {}
-    if llm:
-        for r in llm.get("results", []):
-            llm_by_peak[round(r.get("peak_sec", -1), 1)] = r.get("inference", "")
+    # LLM 추론을 세그먼트에 붙임 — 정확 버킷이 아니라 '가장 가까운 peak'(±0.6s)로 매칭.
+    # (report.peak_sec=실제 프레임시각 vs llm.peak_sec=에이전트가 본 1자리 값이라 어긋남)
+    results = (llm or {}).get("results", [])
     for s in report.get("segments", []):  # 'seg' 파라미터와 충돌 금지(별도 이름)
-        key = round(s.get("peak_sec", -2), 1)
-        if key in llm_by_peak:
-            s["inference"] = llm_by_peak[key]
+        ps = s.get("peak_sec")
+        if ps is None or not results:
+            continue
+        best = min(results, key=lambda r: abs(r.get("peak_sec", 1e9) - ps))
+        if abs(best.get("peak_sec", 1e9) - ps) <= 0.6:
+            s["inference"] = best.get("inference", "")
     frames = sorted(p.name for p in mode_dir.glob("suspect_*.jpg"))
     return {
         "mode": resolved,   # 판별된 실제 종류(라벨용)

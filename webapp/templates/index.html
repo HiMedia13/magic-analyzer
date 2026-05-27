@@ -102,7 +102,11 @@ const resultsEl = document.getElementById('results');
 const goBtn = document.getElementById('go');
 let timer = null;
 
-function fmt(t){ const m=Math.floor(t/60), s=(t%60); return String(m).padStart(2,'0')+':'+s.toFixed(2).padStart(5,'0'); }
+function fmt(t){ t=Number(t)||0; const m=Math.floor(t/60), s=(t%60); return String(m).padStart(2,'0')+':'+s.toFixed(2).padStart(5,'0'); }
+// LLM/기법 문자열은 innerHTML로 들어가므로 반드시 이스케이프(< 포함 시 잘림/주입 방지)
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function safeUrl(u){ return (typeof u==='string' && /^https?:\/\//i.test(u)) ? u : ''; }
+function num(x){ return Number.isFinite(Number(x)) ? Number(x) : 0; }
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -113,6 +117,8 @@ form.addEventListener('submit', async (e) => {
   resultsEl.innerHTML = '';
   goBtn.disabled = true;
   statusBox.style.display = 'block';
+  const spin = statusBox.querySelector('.spin');
+  if (spin) spin.style.display = '';   // 새 시작 시 스피너 복원
   statusText.textContent = '업로드/시작 중…';
   logEl.textContent = '';
   try {
@@ -128,7 +134,7 @@ form.addEventListener('submit', async (e) => {
 
 function poll(jobId){
   statusText.textContent = '분석 중…';
-  const modeKo = (m) => m === 'coin' ? '🪙 동전' : '🃏 카드';
+  const modeKo = (m) => m === 'coin' ? '🪙 동전' : (m === 'auto' ? '🔮 자동 판별' : '🃏 카드');
   timer = setInterval(async () => {
     const r = await fetch('/status/' + jobId);
     const d = await r.json();
@@ -139,7 +145,11 @@ function poll(jobId){
     }
     clearInterval(timer);
     goBtn.disabled = false;
-    if (d.status === 'failed') { statusText.textContent = '분석 실패 (로그 확인)'; return; }
+    if (d.status === 'failed') {
+      const sp = statusBox.querySelector('.spin'); if (sp) sp.style.display = 'none';
+      statusText.textContent = '분석 실패 (아래 로그 확인)';
+      return;
+    }
     statusBox.style.display = 'none';
     render(jobId, d);
   }, 2500);
@@ -159,18 +169,20 @@ function renderMode(jobId, r){
 
   if (r.summary) {
     html += `<div class="card"><h3>🤖 전체 트릭 추정 (에이전트)</h3>
-      <div class="infer" style="white-space:pre-wrap">${r.summary}</div></div>`;
+      <div class="infer" style="white-space:pre-wrap">${esc(r.summary)}</div></div>`;
   }
 
   if (r.techniques && r.techniques.length) {
     html += `<div class="card"><h3>🎓 사용된 기법 설명</h3>`;
     r.techniques.forEach(t => {
+      const url = safeUrl(t.reference_url);
+      const en = t.name_en ? ` ${esc(t.name_en)}` : '';
       html += `<div class="seg">
-        <div class="head"><span>${t.name_ko} <span class="mut">${t.name_en}${t.type?' · '+t.type:''}</span></span></div>
-        <div style="margin:6px 0">${t.desc}</div>
-        ${t.cues ? `<div class="mut" style="font-size:.85rem">관찰 단서: ${t.cues}</div>` : ''}
-        <a href="${t.reference_url}" target="_blank" rel="noopener"
-           style="display:inline-block;margin-top:8px;color:#7db4ff">▶ 참고 튜토리얼 영상 보기</a>
+        <div class="head"><span>${esc(t.name_ko)} <span class="mut">${en}${t.type?' · '+esc(t.type):''}</span></span></div>
+        <div style="margin:6px 0">${esc(t.desc)}</div>
+        ${t.cues ? `<div class="mut" style="font-size:.85rem">관찰 단서: ${esc(t.cues)}</div>` : ''}
+        ${url ? `<a href="${esc(url)}" target="_blank" rel="noopener"
+           style="display:inline-block;margin-top:8px;color:#7db4ff">▶ 참고 튜토리얼 영상 보기</a>` : ''}
       </div>`;
     });
     html += `</div>`;
@@ -182,12 +194,13 @@ function renderMode(jobId, r){
     r.matches.forEach(m => {
       html += `<div class="seg"><div class="head"><span>${fmt(m.time_sec)}</span></div>`;
       (m.results||[]).forEach(rr => {
-        const pct = Math.max(0, Math.min(100, Math.round(rr.similarity*100)));
+        const sim = num(rr.similarity);
+        const pct = Math.max(0, Math.min(100, Math.round(sim*100)));
         html += `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
-          <span style="width:130px">${rr.name_ko}</span>
+          <span style="width:130px">${esc(rr.name_ko)}</span>
           <span style="flex:1;background:#0d0f14;border-radius:6px;overflow:hidden;height:14px">
             <span style="display:block;height:100%;width:${pct}%;background:var(--ok)"></span></span>
-          <span class="mut" style="width:48px;text-align:right">${rr.similarity.toFixed(2)}</span>
+          <span class="mut" style="width:48px;text-align:right">${sim.toFixed(2)}</span>
         </div>`;
       });
       html += `</div>`;
@@ -203,12 +216,13 @@ function renderMode(jobId, r){
   html += `<div class="card"><h3>의심 구간 타임라인</h3>`;
   if (!segs.length) html += `<p class="mut">의심 구간을 찾지 못했습니다.</p>`;
   segs.forEach((s, i) => {
-    const badges = (s.top_signals||[]).map(x => `<span class="badge">${x}</span>`).join('');
+    const badges = (s.top_signals||[]).map(x => `<span class="badge">${esc(x)}</span>`).join('');
+    const score = (s.score==null) ? '-' : num(s.score).toFixed(2);
     html += `<div class="seg">
       <div class="head"><span>[${i+1}] ${fmt(s.start_sec)} ~ ${fmt(s.end_sec)}</span>
-        <span class="mut">정점 ${fmt(s.peak_sec)} · 점수 ${s.score}</span></div>
+        <span class="mut">정점 ${fmt(s.peak_sec)} · 점수 ${score}</span></div>
       <div class="badges">${badges}</div>
-      ${s.inference ? `<div class="infer">🤖 ${s.inference}</div>` : ''}
+      ${s.inference ? `<div class="infer">🤖 ${esc(s.inference)}</div>` : ''}
     </div>`;
   });
   html += `</div>`;
