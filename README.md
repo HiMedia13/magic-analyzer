@@ -7,6 +7,15 @@
 > 이 도구는 비밀을 단정하지 않고, **통계적으로 의심스러운 구간**(손이 사라짐·두 손이 닿음·급동작·주먹쥠)을
 > 찾아 사람이 다시 돌려보도록 돕는 **보조 도구**입니다.
 
+## 주요 기능
+- 🖐️ **의심 순간 탐지** — MediaPipe 손 추적으로 팜·전달·급동작·주먹쥠을 점수화 → 비최대억제(NMS)로 또렷한 순간만
+- 🃏🪙 **카드/동전 자동 판별** — `--mode auto`: 영상 프레임을 보고 종류를 분류해 해당 모드로 분석
+- 🤖 **도구 호출 에이전트** — LangGraph ReAct + OpenAI `gpt-4o`. 의심 순간을 직접 들여다보고(비전) 기법을 추론
+- 🎓 **기법 용어집(33종) + 참고 영상** — 작동 원리·관찰 단서·튜토리얼 링크 제공
+- 🔍 **예시 라이브러리 매칭(few-shot)** — 손 궤적 시그니처(28종)로 기법 유사도 비교
+- 🌐 **웹 UI(Flask)** — URL/업로드 → 마킹 영상·타임라인·기법 설명·매칭을 한 화면에
+- 📊 **LangSmith 추적**(선택) · 🎬 **입력**: 로컬 파일 또는 YouTube URL(yt-dlp 자동 다운로드)
+
 ## 무엇을 탐지하나
 
 | 신호 | 의미(가능성) |
@@ -53,7 +62,7 @@ python main.py trick.mp4 --mode card --score-thresh 0.4
 ### 옵션
 | 옵션 | 설명 |
 |------|------|
-| `--mode {card,coin}` | 마술 종류 (기본 card) |
+| `--mode {card,coin,auto}` | 마술 종류 (기본 card). `auto`면 영상 보고 자동 판별(`OPENAI_API_KEY` 필요) |
 | `--out DIR` | 결과 폴더 (기본 `out`) |
 | `--annotate` | 손 관절+배너 표시된 `annotated.webm` 저장 (브라우저 재생 가능) |
 | `--save-frames K` | 상위 K개 의심 순간 정점 프레임 이미지 저장 |
@@ -132,11 +141,12 @@ python scripts/build_library.py --technique "프렌치 드롭" --video coin.mp4 
 
 시그니처는 손목 기준 정규화 + 고정 길이 리샘플(위치·크기·속도차 흡수)로 `library/signatures.json`에
 저장됩니다. 라이브러리가 비어 있으면 `match_technique`는 비활성(나머지 분석은 정상).
+매칭은 모드(카드/동전)로 후보를 걸러, 카드 영상이 동전 기법에 매칭되는 교차 오류를 막습니다.
 한계: 튜토리얼 시연 ≠ 실제 공연, 작은 라이브러리는 커버리지 제한 — 검증된 예시를 늘릴수록 좋아집니다.
-도구 호출은 LangSmith 트레이스에 그대로 기록됩니다(`list_suspect_moments`, `inspect_moment`).
-이미지는 inspect 도구 안의 비전 서브호출에만 들어가 메인 트레이스가 가볍습니다.
 
-실행 과정은 **LangSmith**에 자동 기록됩니다(키가 있을 때). 키는 `.env`로 줍니다
+### LangSmith 추적 (선택)
+에이전트 실행과 **도구 호출이 LangSmith 트레이스에 그대로 기록**됩니다(키가 있을 때).
+이미지는 inspect 도구의 비전 서브호출에만 들어가 메인 트레이스가 가볍습니다. 키는 `.env`로 줍니다
 (`.env.example` 참고):
 
 ```dotenv
@@ -161,9 +171,22 @@ python scripts/tune.py samples/coin.mp4 --mode coin --score-thresh 1.0 --hist
 ```
 
 ## 로드맵
-- [ ] 동전/카드 객체 자체 추적(사라짐 직접 감지)
 - [x] 의심 프레임을 멀티모달 LLM(OpenAI)에 넘겨 "무슨 일이 일어났는지" 추론
+- [x] 도구 호출 에이전트(LangGraph ReAct) + LangSmith 추적
+- [x] 기법 용어집 + 예시 라이브러리 few-shot 매칭
+- [x] 카드/동전 자동 판별(`--mode auto`)
 - [x] 간단한 웹 UI (Flask, `webapp/app.py`)
+- [ ] 동전/카드 **객체 자체** 추적(손이 아닌 물건의 사라짐 직접 감지)
+- [ ] 매칭 정밀도 개선(DTW 등) · 검증된 예시로 라이브러리 확충
+
+## 프로젝트 구조
+```
+magic_analyzer/   video·fetch(입력) · hands·assets(추적) · detect(탐지) · report(출력)
+                  agent·classify(에이전트/자동판별) · techniques·library(지식/매칭) · cli(파이프라인)
+scripts/          build_library.py(라이브러리 구축) · tune.py(파라미터 튜닝)
+webapp/           app.py(Flask) · templates/index.html(화면)
+library/          signatures.json(기법 시그니처 28종)
+```
 
 ## 면책
-교육·연습 복기 목적의 보조 도구입니다.
+교육·연습 복기(자기 분석) 목적의 보조 도구입니다. 타인의 공연 비밀을 단정·폭로하는 용도가 아닙니다.
